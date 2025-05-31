@@ -13,43 +13,48 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 
 const navItems = [
   {
     title: "AI Assistant",
     icon: MessageSquare,
     id: "chat",
+    path: "/chat"
   },
   {
     title: "Timeline Analysis",
     icon: Clock,
     id: "timeline",
+    path: "/timeline"
   },
   {
     title: "Security Info",
     icon: Shield,
     id: "security",
+    path: "/security"
   },
   {
     title: "About",
     icon: Info,
     id: "about",
+    path: "/about"
   },
   {
     title: "Settings",
     icon: Settings,
     id: "settings",
+    path: "/settings"
   },
 ]
 
 export function AppSidebar() {
-  const [activeItem, setActiveItem] = useState("chat")
+  const router = useRouter()
+  const pathname = usePathname()
+  const activeItem = navItems.find(item => item.path === pathname)?.id || "chat"
 
-  const handleNavigation = (id: string) => {
-    setActiveItem(id)
-    // Dispatch custom event to update main view
-    window.dispatchEvent(new CustomEvent("navigate", { detail: { view: id } }))
+  const handleNavigation = (path: string) => {
+    router.push(path)
   }
 
   return (
@@ -71,7 +76,7 @@ export function AppSidebar() {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    onClick={() => handleNavigation(item.id)}
+                    onClick={() => handleNavigation(item.path)}
                     isActive={activeItem === item.id}
                     className="text-[#d4d4d8] hover:text-white hover:bg-[#2d2d2d] data-[active=true]:bg-gradient-to-r data-[active=true]:from-red-600 data-[active=true]:to-orange-500 data-[active=true]:text-white"
                   >

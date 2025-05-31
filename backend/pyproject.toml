@@ -10,6 +10,7 @@ dependencies = [
     "langgraph-sdk",
     "llama-api-client",
     "python-dotenv",
+    "requests",
 ]
 
 [project.scripts]
