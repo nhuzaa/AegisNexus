@@ -26,32 +26,48 @@ sre-agent-api
 │   ├── test_main.py
 │   └── test_sre_agent.py
 ├── cli.py
-├── requirements.txt
+├── pyproject.toml
 ├── .env.example
 ├── .gitignore
 └── README.md
 ```
 
 ## Installation
-To set up the project, clone the repository and install the required dependencies:
+
+This project uses [uv](https://github.com/astral-sh/uv) for fast Python package management.
+
+### Prerequisites
+- Python 3.12+
+- uv (install with: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+
+### Setup
+To set up the project, clone the repository and install dependencies:
 
 ```bash
 git clone <repository-url>
 cd sre-agent-api
-pip install -r requirements.txt
+uv sync
 ```
 
 ## Usage
-To run the FastAPI application, execute the following command:
+
+### FastAPI Server
+To run the FastAPI application:
 
 ```bash
-uvicorn app.main:app --reload
+# Development mode (with auto-reload)
+uv run uvicorn app.main:app --reload
+
+# Production mode
+uv run uvicorn app.main:app
 ```
 
 This will start the server at `http://127.0.0.1:8000`.
 
-### Asking SRE Questions
-You can send a POST request to the `/sre/ask` endpoint with a JSON body containing your question. For example:
+### API Endpoints
+
+#### Ask SRE Questions
+Send a POST request to the `/sre/ask` endpoint:
 
 ```json
 {
@@ -59,21 +75,103 @@ You can send a POST request to the `/sre/ask` endpoint with a JSON body containi
 }
 ```
 
-### Command Line Interface
-You can also ask questions directly from the command line using the `cli.py` script:
+#### Other Endpoints
+- `POST /sre/incident-response` - Trigger incident response workflow
+- `GET /sre/health` - Get system health report
+- `GET /sre/tools/demo` - Run SRE tools demo
+- `GET /sre/tools/health` - Check SRE tools health
 
+### Command Line Interface
+
+The CLI supports multiple commands for interacting with the SRE agent:
+
+#### Using UV Scripts (Recommended)
 ```bash
-python cli.py --question "What is the role of an SRE?"
+# Ask a question
+uv run cli -q "What is the current CPU usage?"
+
+# Or using the alias
+uv run sre-cli -q "What is the current CPU usage?"
+
+# Get system health report
+uv run cli --health
+
+# Run SRE tools demo
+uv run cli --demo
+
+# Check tools health
+uv run cli --tools-health
+
+# Trigger incident response
+uv run cli --incident "HighCPU" "critical"
+
+# Use a different agent
+uv run cli -a sre -q "Show me recent alerts"
+```
+
+#### Using Direct Python Command
+```bash
+# Ask a question
+uv run python cli.py -q "What is the current CPU usage?"
+
+# Get system health report
+uv run python cli.py --health
+
+# Run SRE tools demo
+uv run python cli.py --demo
+
+# Check tools health
+uv run python cli.py --tools-health
+
+# Trigger incident response
+uv run python cli.py --incident "HighCPU" "critical"
+```
+
+### CLI Commands Reference
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `-q, --question` | Ask a question to the SRE agent | `uv run cli -q "What is SRE?"` |
+| `-a, --agent` | Specify agent type (default: sre_agent) | `uv run cli -a sre -q "hello"` |
+| `--health` | Get comprehensive system health report | `uv run cli --health` |
+| `--demo` | Run SRE tools demonstration | `uv run cli --demo` |
+| `--tools-health` | Check health status of all SRE tools | `uv run cli --tools-health` |
+| `--incident` | Trigger incident response workflow | `uv run cli --incident "AlertName" "severity"` |
+
+## Development
+
+### Running Tests
+```bash
+# Run all tests
+uv run pytest
+
+# Run specific test file
+uv run pytest tests/test_sre_agent.py
+
+# Run with verbose output
+uv run pytest -v
+```
+
+### Adding Dependencies
+```bash
+# Add production dependency
+uv add package-name
+
+# Add development dependency
+uv add --dev package-name
 ```
 
 ## Environment Variables
-Create a `.env` file in the root directory based on the `.env.example` file to configure any necessary environment variables for the application.
-
-## Testing
-To run the tests, use the following command:
+Create a `.env.local` file in the root directory based on the `.env.example` file:
 
 ```bash
-pytest
+# Copy example file
+cp .env.example .env.local
+
+# Edit with your actual API keys
+LANGGRAPH_API_URL=your_langgraph_api_url_here
+LANGGRAPH_API_KEY=your_langgraph_api_key_here
+LLAMA_API_KEY=your_llama_api_key_here
 ```
 
 ## Contributing

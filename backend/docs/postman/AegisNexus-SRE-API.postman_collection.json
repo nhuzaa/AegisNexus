@@ -1,0 +1,523 @@
+{
+  "info": {
+    "name": "AegisNexus SRE Agent API",
+    "description": "Collection for AegisNexus SRE Agent API endpoints\n\nThis collection includes all the available SRE agent endpoints for:\n- Asking SRE questions with AI-powered responses\n- Triggering incident response workflows\n- Getting system health reports\n- Managing SRE tools and demonstrations\n\nThe API uses FastAPI with integrated SRE tools including Prometheus, Grafana, Loki, Alertmanager, GitHub, Slack, Teams, and OpenTelemetry.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345678"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "API Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                ""
+              ]
+            },
+            "description": "Basic health check endpoint to verify the API is running"
+          },
+          "response": []
+        },
+        {
+          "name": "System Health Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sre/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "health"
+              ]
+            },
+            "description": "Get comprehensive system health report including:\n- Tools health status\n- Current alerts\n- Service map\n- Recent metrics (CPU, memory)\n- AI-powered health assessment"
+          },
+          "response": []
+        },
+        {
+          "name": "SRE Tools Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sre/tools/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "tools",
+                "health"
+              ]
+            },
+            "description": "Check the health status of all integrated SRE tools:\n- Prometheus\n- Grafana\n- Loki\n- Alertmanager\n- GitHub\n- Slack\n- Teams\n- OpenTelemetry"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check and monitoring endpoints"
+    },
+    {
+      "name": "SRE Questions",
+      "item": [
+        {
+          "name": "Ask General SRE Question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What is Site Reliability Engineering?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "ask"
+              ]
+            },
+            "description": "Ask general SRE questions. The agent will provide AI-powered responses using both LangGraph and Llama API."
+          },
+          "response": []
+        },
+        {
+          "name": "Ask About CPU Usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What's the current CPU usage?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "ask"
+              ]
+            },
+            "description": "Ask about current CPU usage. This will trigger Prometheus metrics collection and provide enhanced context with real-time data."
+          },
+          "response": []
+        },
+        {
+          "name": "Ask About Memory Usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Show me current memory usage and trends\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "ask"
+              ]
+            },
+            "description": "Ask about memory usage. Will fetch Prometheus metrics for memory utilization."
+          },
+          "response": []
+        },
+        {
+          "name": "Ask About Error Logs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Show me recent error logs\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "ask"
+              ]
+            },
+            "description": "Ask about error logs. This will query Loki for recent error logs and OpenTelemetry for traces."
+          },
+          "response": []
+        },
+        {
+          "name": "Ask About Active Alerts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Are there any active alerts?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "ask"
+              ]
+            },
+            "description": "Ask about active alerts. Will fetch current alerts from Alertmanager."
+          },
+          "response": []
+        },
+        {
+          "name": "Ask About Recent Deployments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Show me recent deployments and commits\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "ask"
+              ]
+            },
+            "description": "Ask about recent deployments. Will fetch recent commits from GitHub."
+          },
+          "response": []
+        },
+        {
+          "name": "Ask About System Overview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Give me a complete system overview and health status\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "ask"
+              ]
+            },
+            "description": "Ask for complete system overview. Will trigger health checks and service map collection."
+          },
+          "response": []
+        }
+      ],
+      "description": "SRE question endpoints with AI-powered responses and tool integration"
+    },
+    {
+      "name": "Incident Response",
+      "item": [
+        {
+          "name": "Trigger High CPU Incident",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alert_name\": \"HighCPUUsage\",\n  \"severity\": \"warning\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/incident-response",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "incident-response"
+              ]
+            },
+            "description": "Trigger incident response for high CPU usage with warning severity.\n\nWorkflow includes:\n- Alert collection\n- Metrics gathering\n- Log analysis\n- Trace collection\n- Notifications to Slack and Teams"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Critical Memory Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alert_name\": \"HighMemoryUsage\",\n  \"severity\": \"critical\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/incident-response",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "incident-response"
+              ]
+            },
+            "description": "Trigger incident response for high memory usage with critical severity.\n\nFor critical alerts, additional steps include:\n- Rollback candidate identification\n- Enhanced monitoring\n- Priority notifications"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Disk Space Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alert_name\": \"DiskSpaceLow\",\n  \"severity\": \"critical\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/incident-response",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "incident-response"
+              ]
+            },
+            "description": "Trigger incident response for low disk space with critical severity."
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Network Connectivity Issue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alert_name\": \"NetworkConnectivityIssue\",\n  \"severity\": \"warning\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/incident-response",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "incident-response"
+              ]
+            },
+            "description": "Trigger incident response for network connectivity issues."
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Database Performance Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alert_name\": \"DatabasePerformance\",\n  \"severity\": \"critical\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sre/incident-response",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "incident-response"
+              ]
+            },
+            "description": "Trigger incident response for database performance issues with critical severity."
+          },
+          "response": []
+        }
+      ],
+      "description": "Incident response workflows for various alert types and severities"
+    },
+    {
+      "name": "Tools & Demos",
+      "item": [
+        {
+          "name": "Run SRE Tools Demo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sre/tools/demo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sre",
+                "tools",
+                "demo"
+              ]
+            },
+            "description": "Run a comprehensive demonstration of all SRE tools functionality.\n\nIncludes:\n- Health checks for all tools\n- Sample incident response workflow\n- Tool integration examples\n\nNote: Check console output for detailed demo results."
+          },
+          "response": []
+        }
+      ],
+      "description": "Demo and testing endpoints for SRE tools"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set dynamic timestamp for requests",
+          "pm.globals.set('timestamp', Math.floor(Date.now() / 1000));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Common test scripts for all requests",
+          "",
+          "// Test that response time is reasonable",
+          "pm.test('Response time is reasonable', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(30000); // 30 seconds",
+          "});",
+          "",
+          "// Test that response is JSON (for non-error responses)",
+          "if (pm.response.code < 500) {",
+          "    pm.test('Response is JSON', function () {",
+          "        pm.response.to.be.json;",
+          "    });",
+          "}",
+          "",
+          "// Test for successful responses",
+          "if (pm.response.code === 200) {",
+          "    pm.test('Status code is 200', function () {",
+          "        pm.response.to.have.status(200);",
+          "    });",
+          "}",
+          "",
+          "// Log response for debugging",
+          "console.log('Response status:', pm.response.status);",
+          "console.log('Response time:', pm.response.responseTime + 'ms');"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "collection_version",
+      "value": "1.0.0",
+      "type": "string"
+    },
+    {
+      "key": "api_version",
+      "value": "v1",
+      "type": "string"
+    }
+  ]
+}
