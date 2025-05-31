@@ -1,0 +1,149 @@
+:root {
+  --bg: #111;
+  --panel: #222;
+  --hover: #333;
+  --text: #eee;
+  --border: #444;
+  --accent: #555;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #fff;
+}
+
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+
+.main {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+
+input, textarea {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+.chat-container {
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem;
+}
+
+.chat-message {
+  background: var(--hover);
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 6px;
+}
+
+.chat-input {
+  width: 100%;
+  min-height: 40px;
+  resize: vertical;
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar-collapsed {
+  width: 60px;
+}
+
+.sidebar-expanded {
+  width: 250px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin: 0.25rem 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: var(--hover);
+}
+
+.nav-icon {
+  margin-right: 0.75rem;
+  min-width: 20px;
+}
+
+.nav-text {
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-collapsed .nav-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
