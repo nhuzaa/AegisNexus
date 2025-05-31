@@ -156,11 +156,47 @@
         mode: '0755'
         remote_src: yes
 
-    # Start Minikube (as ubuntu user) - Expose to host
+    # Clean up any existing Minikube cluster first
+    - name: Clean up any existing Minikube cluster
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "Cleaning up any existing Minikube cluster..."
+        minikube delete --all --purge || true
+        docker system prune -f || true
+        echo "Cleanup completed"
+      ignore_errors: yes
+
+    # Start Minikube (as ubuntu user) - Expose to host with retry logic
     - name: Start Minikube with proper configuration and host exposure
       become_user: "{{ ubuntu_user }}"
       shell: |
-        minikube start --driver=docker --cpus=2 --memory=4096 --disk-size=30g --listen-address=0.0.0.0 --insecure-registry="0.0.0.0/0"
+        echo "Starting Minikube with fresh configuration..."
+        
+        # Retry logic for Minikube start
+        max_retries=3
+        retry_count=0
+        
+        while [ $retry_count -lt $max_retries ]; do
+          echo "Attempt $((retry_count + 1)) of $max_retries to start Minikube..."
+          
+          if minikube start --driver=docker --cpus=2 --memory=4096 --disk-size=30g --listen-address=0.0.0.0 --insecure-registry="0.0.0.0/0" --delete-on-failure; then
+            echo "✅ Minikube started successfully!"
+            break
+          else
+            echo "❌ Minikube start failed on attempt $((retry_count + 1))"
+            retry_count=$((retry_count + 1))
+            
+            if [ $retry_count -lt $max_retries ]; then
+              echo "Cleaning up before retry..."
+              minikube delete --all --purge || true
+              docker system prune -f || true
+              sleep 30
+            else
+              echo "❌ Failed to start Minikube after $max_retries attempts"
+              exit 1
+            fi
+          fi
+        done
       environment:
         CHANGE_MINIKUBE_NONE_USER: "true"
         MINIKUBE_IN_STYLE: "true"
