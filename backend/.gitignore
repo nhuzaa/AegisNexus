@@ -213,3 +213,14 @@ ipython_config.py
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to
+
+# All .pyc files in any folder/subfolder
+*.pyc
+**/*.pyc
+*/**/*.pyc
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class

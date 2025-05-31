@@ -32,11 +32,11 @@ class LLMService:
                 messages=[
                     {"role": "user", "content": question}
                 ],
-                model="llama3-8b-instruct",  # You can change this model
+                model="Llama-4-Maverick-17B-128E-Instruct-FP8",
                 stream=False
             )
             return {
-                "response": response.choices[0].message.content,
+                "response": response.completion_message.content.text,
                 "status": "success"
             }
         except Exception as e:

@@ -164,4 +164,13 @@ temp/
 
 
 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# All .pyc files in any folder/subfolder
+*.pyc
+**/*.pyc
+*/**/*.pyc
 
