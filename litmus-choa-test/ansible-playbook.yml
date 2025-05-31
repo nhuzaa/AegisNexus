@@ -74,6 +74,14 @@
         state: started
         enabled: yes
 
+    # Fix docker socket permissions
+    - name: Set proper permissions on docker socket
+      file:
+        path: /var/run/docker.sock
+        mode: '0666'
+        owner: root
+        group: docker
+
     # Ensure docker group permissions are applied
     - name: Reset ssh connection to apply group changes
       meta: reset_connection
@@ -146,29 +154,12 @@
     - name: Start Minikube with proper configuration
       become_user: "{{ ubuntu_user }}"
       shell: |
-        # Ensure we're in the docker group
-        newgrp docker << 'EOF'
-        minikube start --driver=docker --cpus=4 --memory=8192 --disk-size=50g
+        minikube start --driver=docker --cpus=2 --memory=4096 --disk-size=30g
         minikube addons enable metrics-server
         minikube addons enable ingress
-        EOF
       environment:
         CHANGE_MINIKUBE_NONE_USER: "true"
         MINIKUBE_IN_STYLE: "true"
-      register: minikube_start
-      failed_when: false
-
-    - name: Alternative Minikube start with sudo if needed
-      shell: |
-        sudo -u {{ ubuntu_user }} newgrp docker << 'EOF'
-        minikube start --driver=docker --cpus=4 --memory=8192 --disk-size=50g
-        minikube addons enable metrics-server
-        minikube addons enable ingress
-        EOF
-      environment:
-        CHANGE_MINIKUBE_NONE_USER: "true"
-        MINIKUBE_IN_STYLE: "true"
-      when: minikube_start.rc != 0
 
     # Create namespaces
     - name: Create Kubernetes namespaces
