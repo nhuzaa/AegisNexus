@@ -1,10 +1,11 @@
-from app.services.llm_service import send_to_langgraph, send_to_llama_api
+from app.services.llm_service import LLMService
 from app.tools.sre_tools import SRETool
 
 
 class SREAgent:
     def __init__(self):
         self.tool = SRETool()
+        self.llm_service = LLMService()
 
     def ask_question(self, question: str) -> dict:
         try:
@@ -14,9 +15,19 @@ class SREAgent:
             # Generate LLM thought about the question
             llm_thought = f"Analyzing SRE question: '{question}' - {tool_result['tool_summary']}"
             
-            # Get LLM responses
-            langgraph_response = send_to_langgraph(question)
-            llama_response = send_to_llama_api(question)
+            # Get LLM responses with tool context
+            langgraph_response = self.llm_service.ask_langgraph(
+                question=question,
+                tools_used=tool_result.get("tools_used"),
+                tool_summary=tool_result.get("tool_summary"),
+                natural_summary=tool_result.get("natural_summary")
+            )
+            llama_response = self.llm_service.ask_llama(
+                question=question,
+                tools_used=tool_result.get("tools_used"),
+                tool_summary=tool_result.get("tool_summary"),
+                natural_summary=tool_result.get("natural_summary")
+            )
 
             return {
                 "tool_summary": tool_result["tool_summary"],

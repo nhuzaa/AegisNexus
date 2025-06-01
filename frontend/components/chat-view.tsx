@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Send, Paperclip, Bot, User, ImageIcon, FileText, AlertCircle, CheckCircle } from "lucide-react"
+import { SREPromptSuggestions } from "@/components/sre-prompt-suggestions"
 
 interface Message {
   id: string
@@ -116,47 +117,21 @@ export function ChatView() {
     }, 2000)
   }
 
-  const quickActions = [
-    { label: "Analyze Current Threats", icon: AlertCircle },
-    { label: "System Health Check", icon: CheckCircle },
-    { label: "Compliance Report", icon: FileText },
-    { label: "Performance Review", icon: Bot },
-  ]
-
-  const handleQuickAction = (action: string) => {
-    setInputValue(action)
+  const handlePromptSelect = (prompt: string) => {
+    setInputValue(prompt)
+    handleSendMessage()
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-[#0a0a0a] min-h-screen p-6">
       <div>
         <h2 className="text-3xl font-bold text-white mb-2">AI Security Assistant</h2>
         <p className="text-[#71717a]">Intelligent security analysis and recommendations powered by nlkit</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Quick Actions */}
-        <Card className="bg-[#2d2d2d] border-[#3d3d3d]">
-          <CardHeader>
-            <CardTitle className="text-white text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {quickActions.map((action, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                className="w-full justify-start text-left bg-[#1e1e1e] border-[#3d3d3d] text-[#d4d4d8] hover:bg-[#2d2d2d] hover:text-white"
-                onClick={() => handleQuickAction(action.label)}
-              >
-                <action.icon className="h-4 w-4 mr-2" />
-                {action.label}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
-
+      <div className="flex gap-6">
         {/* Chat Interface */}
-        <Card className="lg:col-span-3 bg-[#2d2d2d] border-[#3d3d3d]">
+        <Card className="w-[85%] flex-shrink-0 bg-[#111111] border-[#1d1d1d]">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Bot className="h-5 w-5" />
@@ -166,7 +141,7 @@ export function ChatView() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Messages Container */}
-            <div className="h-96 overflow-y-auto space-y-4 p-4 bg-[#1e1e1e] rounded-lg border border-[#3d3d3d]">
+            <div className="h-96 overflow-y-auto space-y-4 p-4 bg-[#0d0d0d] rounded-lg border border-[#1d1d1d]">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -190,7 +165,7 @@ export function ChatView() {
                       className={`rounded-lg p-3 ${
                         message.type === "user"
                           ? "bg-[#0ea5e9] text-white"
-                          : "bg-[#2d2d2d] text-[#d4d4d8] border border-[#3d3d3d]"
+                          : "bg-[#1a1a1a] text-[#d4d4d8] border border-[#1d1d1d]"
                       }`}
                     >
                       <p className="text-sm">{message.content}</p>
@@ -208,7 +183,9 @@ export function ChatView() {
                           ))}
                         </div>
                       )}
-                      <p className="text-xs opacity-70 mt-1">{message.timestamp.toLocaleTimeString()}</p>
+                      <span className="text-xs opacity-70 mt-1 block">
+                        {message.timestamp.toLocaleTimeString()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -219,15 +196,15 @@ export function ChatView() {
                   <div className="w-8 h-8 rounded-full bg-[#22c55e] flex items-center justify-center">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
-                  <div className="bg-[#2d2d2d] border border-[#3d3d3d] rounded-lg p-3">
+                  <div className="bg-[#1a1a1a] border border-[#1d1d1d] rounded-lg p-3">
                     <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-[#71717a] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#22c55e] rounded-full animate-bounce"></div>
                       <div
-                        className="w-2 h-2 bg-[#71717a] rounded-full animate-bounce"
+                        className="w-2 h-2 bg-[#22c55e] rounded-full animate-bounce"
                         style={{ animationDelay: "0.1s" }}
                       ></div>
                       <div
-                        className="w-2 h-2 bg-[#71717a] rounded-full animate-bounce"
+                        className="w-2 h-2 bg-[#22c55e] rounded-full animate-bounce"
                         style={{ animationDelay: "0.2s" }}
                       ></div>
                     </div>
@@ -236,48 +213,51 @@ export function ChatView() {
               )}
             </div>
 
+            {/* File Upload */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              className="hidden"
+              accept="image/*,.pdf,.txt,.log"
+            />
+
             {/* Input Area */}
             <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                accept="image/*,.txt,.log,.json,.csv"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-[#1e1e1e] border-[#3d3d3d] text-[#d4d4d8] hover:bg-[#2d2d2d]"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
               <Input
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ask about security threats, system performance, or upload files for analysis..."
-                className="flex-1 bg-[#1e1e1e] border-[#3d3d3d] text-white placeholder:text-[#71717a]"
-                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                className="flex-1 bg-[#0d0d0d] border-[#1d1d1d] text-[#d4d4d8] placeholder:text-[#71717a]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }
+                }}
               />
               <Button
+                variant="outline"
+                size="icon"
+                className="bg-[#0d0d0d] border-[#1d1d1d] text-[#d4d4d8] hover:bg-[#1a1a1a]"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isLoading}
-                className="bg-[#0ea5e9] hover:bg-[#0ea5e9]/80 text-white"
+                disabled={isLoading || !inputValue.trim()}
+                className="bg-[#22c55e] text-black hover:bg-[#16a34a]"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-
-            {/* nlkit Integration Note */}
-            <div className="text-xs text-[#71717a] p-3 bg-[#1e1e1e] rounded border border-[#3d3d3d]">
-              <p className="font-medium mb-1">nlkit Integration:</p>
-              <p>
-                This chat interface is designed to integrate with nlkit/nlux. Configure your chat adapter following the
-                nlkit documentation at docs.nlkit.com/nlux/examples/react-js-ai-assistant for production deployment.
-              </p>
-            </div>
           </CardContent>
+        </Card>
+
+        {/* SRE Prompt Suggestions - Right Side */}
+        <Card className="w-[15%] flex-shrink-0 bg-[#111111] border-[#1d1d1d]">
+          <SREPromptSuggestions onPromptSelect={handlePromptSelect} />
         </Card>
       </div>
     </div>

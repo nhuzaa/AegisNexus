@@ -37,34 +37,34 @@
   }
 
   .dark {
-    --background: #111111;
+    --background: #0a0a0a;
     --foreground: #d4d4d8;
-    --card: #2d2d2d;
+    --card: #111111;
     --card-foreground: #d4d4d8;
-    --popover: #2d2d2d;
+    --popover: #111111;
     --popover-foreground: #d4d4d8;
     --primary: #ef4444;
     --primary-foreground: #ffffff;
-    --secondary: #1e1e1e;
+    --secondary: #0d0d0d;
     --secondary-foreground: #d4d4d8;
-    --muted: #1e1e1e;
+    --muted: #0d0d0d;
     --muted-foreground: #71717a;
-    --accent: #2d2d2d;
+    --accent: #111111;
     --accent-foreground: #d4d4d8;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: #3d3d3d;
-    --input: #2d2d2d;
+    --border: #1d1d1d;
+    --input: #0d0d0d;
     --ring: #ef4444;
 
     /* Dark theme sidebar variables with fire colors */
-    --sidebar-background: #1e1e1e;
+    --sidebar-background: #0d0d0d;
     --sidebar-foreground: #d4d4d8;
     --sidebar-primary: #ffffff;
     --sidebar-primary-foreground: #111111;
-    --sidebar-accent: #2d2d2d;
+    --sidebar-accent: #111111;
     --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: #3d3d3d;
+    --sidebar-border: #1d1d1d;
     --sidebar-ring: #ef4444;
   }
 }
@@ -73,8 +73,148 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    background-color: #0a0a0a;
+    color: #d4d4d8;
+  }
+  
   body {
     @apply bg-background text-foreground;
+    background-color: #0a0a0a !important;
+    color: #d4d4d8 !important;
+    min-height: 100vh;
+  }
+  
+  #__next {
+    background-color: #0a0a0a;
+    min-height: 100vh;
+  }
+  
+  /* Make all flex classes have dark backgrounds */
+  .flex {
+    background-color: #0a0a0a !important;
+  }
+  
+  .flex-1 {
+    background-color: #0a0a0a !important;
+  }
+  
+  .flex-col {
+    background-color: #0a0a0a !important;
+  }
+  
+  .flex-row {
+    background-color: #0a0a0a !important;
+  }
+  
+  .flex-wrap {
+    background-color: #0a0a0a !important;
+  }
+  
+  .flex-nowrap {
+    background-color: #0a0a0a !important;
+  }
+  
+  .flex-shrink-0 {
+    background-color: #0a0a0a !important;
+  }
+  
+  .flex-grow {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Alternative approach - target any element with flex display */
+  [class*="flex"] {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Ensure flex containers are dark */
+  div[class*="flex"],
+  section[class*="flex"],
+  main[class*="flex"],
+  header[class*="flex"],
+  footer[class*="flex"],
+  nav[class*="flex"] {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Make all sidebar, header, main, content elements dark */
+  [data-sidebar] {
+    background-color: #0a0a0a !important;
+  }
+  
+  [data-sidebar-content] {
+    background-color: #0a0a0a !important;
+  }
+  
+  [data-sidebar-header] {
+    background-color: #0a0a0a !important;
+  }
+  
+  [data-sidebar-footer] {
+    background-color: #0a0a0a !important;
+  }
+  
+  [data-sidebar-group] {
+    background-color: #0a0a0a !important;
+  }
+  
+  [data-sidebar-menu] {
+    background-color: #0a0a0a !important;
+  }
+  
+  [data-sidebar-trigger] {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Make structural elements dark */
+  sidebar,
+  .sidebar {
+    background-color: #0a0a0a !important;
+  }
+  
+  header,
+  .header {
+    background-color: #0a0a0a !important;
+  }
+  
+  main,
+  .main {
+    background-color: #0a0a0a !important;
+  }
+  
+  content,
+  .content {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Target common layout containers */
+  .layout,
+  .container,
+  .wrapper,
+  .app {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Target any element with sidebar in class name */
+  [class*="sidebar"] {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Target any element with content in class name */
+  [class*="content"] {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Target any element with header in class name */
+  [class*="header"] {
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Target any element with main in class name */
+  [class*="main"] {
+    background-color: #0a0a0a !important;
   }
 }
 
@@ -84,7 +224,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e1e1e;
+  background: #0d0d0d;
 }
 
 ::-webkit-scrollbar-thumb {

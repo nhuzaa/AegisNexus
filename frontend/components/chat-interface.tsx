@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { askAIAssistant } from "@/lib/api"
 import { VoiceInterface } from "@/components/voice-interface"
+import { SREPromptSuggestions } from "@/components/sre-prompt-suggestions"
 
 interface Message {
   id: string
@@ -110,10 +111,19 @@ export function ChatInterface({ initialMessage }: ChatInterfaceProps) {
     try {
       const response = await askAIAssistant(content)
       
-      // Ensure the response content is a string
-      const responseContent = typeof response.response === 'string' 
-        ? response.response 
-        : JSON.stringify(response.response, null, 2)
+      // Extract natural_summary from the nested response structure
+      let responseContent = "Sorry, I couldn't process your request."
+      
+      if (response && response.response && typeof response.response === 'object') {
+        // Extract natural_summary from the response object
+        const naturalSummary = (response.response as any).natural_summary
+        if (naturalSummary && typeof naturalSummary === 'string') {
+          // Remove quotes from the beginning and end if they exist
+          responseContent = naturalSummary.replace(/^["']|["']$/g, '')
+        }
+      } else if (typeof response.response === 'string') {
+        responseContent = response.response
+      }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -158,188 +168,196 @@ export function ChatInterface({ initialMessage }: ChatInterfaceProps) {
     }
   }
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-7rem)]">
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold text-white">AI Security Assistant</h2>
-        <p className="text-[#71717a]">Upload images or ask questions about security</p>
-      </div>
+  const handlePromptSelect = (prompt: string) => {
+    setInput(prompt)
+    handleSendMessage(prompt)
+  }
 
-      <Card className="flex-1 flex flex-col bg-[#2d2d2d] border-[#3d3d3d]">
-        <CardContent className="flex flex-col h-full p-4">
-          <ScrollArea ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 p-2">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start gap-3 ${
-                  message.type === "user" ? "justify-end" : ""
-                }`}
-              >
-                {message.type === "assistant" && (
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-black" />
-                  </div>
-                )}
+  return (
+    <div className="flex gap-6 h-[calc(100vh-7rem)] bg-[#0a0a0a]">
+      {/* Main Chat Interface */}
+      <div className="flex-1 w-[85%] flex flex-col">
+           <Card className="flex-1 flex flex-col bg-[#111111] border-[#1d1d1d]">
+          <CardContent className="flex flex-col h-full p-4">
+            <ScrollArea ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 p-2">
+              {messages.map((message) => (
                 <div
-                  className={`rounded-lg p-3 max-w-[80%] ${
-                    message.type === "user"
-                      ? "bg-[#2d2d2d] text-white"
-                      : "bg-[#1e1e1e] text-white"
+                  key={message.id}
+                  className={`flex items-start gap-3 ${
+                    message.type === "user" ? "justify-end" : ""
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  {message.attachments?.map((attachment, index) => (
-                    <div key={index} className="mt-2">
-                      {attachment.type === "image" ? (
-                        <div className="mt-2 rounded-md overflow-hidden border border-[#3d3d3d]">
-                          <img
-                            src={attachment.url || "/placeholder.svg"}
-                            alt={attachment.name}
-                            className="max-w-full max-h-60 object-contain"
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 p-2 bg-[#111111] rounded-md">
-                          <FileText className="h-4 w-4" />
-                          <span className="text-sm truncate">{attachment.name}</span>
-                        </div>
-                      )}
+                  {message.type === "assistant" && (
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500 flex items-center justify-center">
+                      <Bot className="h-4 w-4 text-black" />
                     </div>
-                  ))}
-                  <span className="text-xs text-[#71717a] mt-1 block">
-                    {message.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                {message.type === "user" && (
-                  <div className="h-8 w-8 rounded-full bg-[#2d2d2d] flex items-center justify-center">
-                    <User className="h-4 w-4 text-white" />
+                  )}
+                  <div
+                    className={`rounded-lg p-3 max-w-[80%] ${
+                      message.type === "user"
+                        ? "bg-[#1a1a1a] text-white"
+                        : "bg-[#0d0d0d] text-white"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.attachments?.map((attachment, index) => (
+                      <div key={index} className="mt-2">
+                        {attachment.type === "image" ? (
+                          <div className="mt-2 rounded-md overflow-hidden border border-[#1d1d1d]">
+                            <img
+                              src={attachment.url || "/placeholder.svg"}
+                              alt={attachment.name}
+                              className="max-w-full max-h-60 object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 p-2 bg-[#000000] rounded-md">
+                            <FileText className="h-4 w-4" />
+                            <span className="text-sm truncate">{attachment.name}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <span className="text-xs text-[#71717a] mt-1 block">
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
-
-            {showQuickStart && !initialMessage && (
-              <div className="space-y-3 my-6">
-                <p className="text-[#d4d4d8] text-sm font-medium">Quick Start Options:</p>
-                <div className="grid gap-3">
-                  {quickStartOptions.map((option, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className={`h-auto p-4 bg-gradient-to-r from-red-600 to-orange-500 border-0 text-white hover:opacity-90 transition-all duration-200 hover:scale-[1.02]`}
-                      onClick={() => handleQuickStart(option)}
-                    >
-                      {option}
-                    </Button>
-                  ))}
+                  {message.type === "user" && (
+                    <div className="h-8 w-8 rounded-full bg-[#1a1a1a] flex items-center justify-center">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
 
-            {isLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-black" />
-                </div>
-                <div className="bg-[#1e1e1e] border border-[#3d3d3d] rounded-lg p-3">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-full animate-bounce"></div>
-                    <div
-                      className="w-2 h-2 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.1s" }}
-                    ></div>
-                    <div
-                      className="w-2 h-2 bg-gradient-to-r from-yellow-500 to-red-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.2s" }}
-                    ></div>
+              {showQuickStart && !initialMessage && (
+                <div className="space-y-3 my-6">
+                  <p className="text-[#d4d4d8] text-sm font-medium">Quick Start Options:</p>
+                  <div className="grid gap-3">
+                    {quickStartOptions.map((option, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className={`h-auto p-4 bg-gradient-to-r from-red-600 to-orange-500 border-0 text-white hover:opacity-90 transition-all duration-200 hover:scale-[1.02]`}
+                        onClick={() => handleQuickStart(option)}
+                      >
+                        {option}
+                      </Button>
+                    ))}
                   </div>
                 </div>
-              </div>
-            )}
-            {error && (
-              <div className="flex items-center gap-2 text-red-500 bg-red-500/10 p-3 rounded-lg">
-                <AlertTriangle className="h-4 w-4" />
-                <p className="text-sm">{error}</p>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </ScrollArea>
+              )}
 
-          {selectedFile && (
-            <div className="mb-4 p-3 bg-[#1e1e1e] rounded-lg border border-[#3d3d3d] relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-1 right-1 h-6 w-6 rounded-full bg-[#3d3d3d] hover:bg-[#4d4d4d]"
-                onClick={clearSelectedFile}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-              <div className="flex items-center gap-2">
-                {selectedFile.type.startsWith("image/") && previewUrl ? (
-                  <div className="w-full">
-                    <p className="text-xs text-[#71717a] mb-2">Selected image:</p>
-                    <div className="rounded-md overflow-hidden">
-                      <img
-                        src={previewUrl || "/placeholder.svg"}
-                        alt="Preview"
-                        className="max-h-40 object-contain mx-auto"
-                      />
+              {isLoading && (
+                <div className="flex gap-3 justify-start">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center">
+                    <Bot className="h-4 w-4 text-black" />
+                  </div>
+                  <div className="bg-[#0d0d0d] border border-[#1d1d1d] rounded-lg p-3">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-full animate-bounce"></div>
+                      <div
+                        className="w-2 h-2 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="w-2 h-2 bg-gradient-to-r from-yellow-500 to-red-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <FileText className="h-5 w-5 text-[#71717a]" />
-                    <span className="text-sm text-[#d4d4d8] truncate">{selectedFile.name}</span>
-                  </>
-                )}
+                </div>
+              )}
+              {error && (
+                <div className="flex items-center gap-2 text-red-500 bg-red-500/10 p-3 rounded-lg">
+                  <AlertTriangle className="h-4 w-4" />
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </ScrollArea>
+
+            {selectedFile && (
+              <div className="mb-4 p-3 bg-[#0d0d0d] rounded-lg border border-[#1d1d1d] relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 right-1 h-6 w-6 rounded-full bg-[#1d1d1d] hover:bg-[#2d2d2d]"
+                  onClick={clearSelectedFile}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+                <div className="flex items-center gap-2">
+                  {selectedFile.type.startsWith("image/") && previewUrl ? (
+                    <div className="w-full">
+                      <p className="text-xs text-[#71717a] mb-2">Selected image:</p>
+                      <div className="rounded-md overflow-hidden">
+                        <img
+                          src={previewUrl || "/placeholder.svg"}
+                          alt="Preview"
+                          className="max-h-40 object-contain mx-auto"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <FileText className="h-5 w-5 text-[#71717a]" />
+                      <span className="text-sm text-[#d4d4d8] truncate">{selectedFile.name}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 border-t border-[#1d1d1d]">
+              <div className="flex gap-2">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type your message..."
+                  className="flex-1 bg-[#0d0d0d] border-[#1d1d1d] text-white placeholder:text-[#71717a] focus:border-[#2d2d2d]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendMessage(input)
+                    }
+                  }}
+                />
+                <VoiceInterface onTranscription={(text) => {
+                  setInput(text)
+                  handleSendMessage(text)
+                }} />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-[#0d0d0d] border-[#1d1d1d] text-[#d4d4d8] hover:bg-[#1a1a1a] hover:text-white transition-colors"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={() => handleSendMessage(input)}
+                  disabled={isLoading || !input.trim()}
+                  className="bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500 text-black hover:opacity-90 transition-opacity"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-          )}
 
-          <div className="p-4 border-t border-[#3d3d3d]">
-            <div className="flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                className="flex-1 bg-[#1e1e1e] border-[#3d3d3d] text-white placeholder:text-[#71717a] focus:border-[#4d4d4d]"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSendMessage(input)
-                  }
-                }}
-              />
-              <VoiceInterface onTranscription={(text) => {
-                setInput(text)
-                handleSendMessage(text)
-              }} />
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-[#1e1e1e] border-[#3d3d3d] text-[#d4d4d8] hover:bg-[#2d2d2d] hover:text-white transition-colors"
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Button
-                onClick={() => handleSendMessage(input)}
-                disabled={isLoading || !input.trim()}
-                className="bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500 text-black hover:opacity-90 transition-opacity"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+            <div className="mt-4 flex items-center gap-2">
+              <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">nlkit</Badge>
+              <span className="text-xs text-[#71717a]">
+                Powered by nlkit/nlux - Configure your chat adapter following the nlkit documentation
+              </span>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          <div className="mt-4 flex items-center gap-2">
-            <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">nlkit</Badge>
-            <span className="text-xs text-[#71717a]">
-              Powered by nlkit/nlux - Configure your chat adapter following the nlkit documentation
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+      {/* SRE Prompt Suggestions Sidebar - Right Side */}
+      <div className="w-[15%] flex-shrink-0">
+        <SREPromptSuggestions onPromptSelect={handlePromptSelect} />
+      </div>
     </div>
   )
 }

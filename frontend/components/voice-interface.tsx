@@ -101,7 +101,7 @@ export function VoiceInterface({ onTranscription }: VoiceInterfaceProps) {
 
       setIsConnected(true)
       toast({
-        title: "Azure Speech Ready",
+        title: "Speech servie ready",
         description: "Speech services initialized successfully",
         duration: 2000,
       })
