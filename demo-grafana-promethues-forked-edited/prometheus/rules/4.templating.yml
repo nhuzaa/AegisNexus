@@ -1,0 +1,12 @@
+groups:
+  - name: templating
+    rules:
+      - alert: HighCPU
+        expr: avg_over_time(cpu_usage[5m])>80
+        for: 0s  # pending period
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "CPU usage for instance {{ $labels.instance }} exceeded 80%"
+          description: "CPU usage for instance {{ $labels.instance }} has been above 80% for the last 5 minutes."

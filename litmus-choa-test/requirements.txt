@@ -1,0 +1,4 @@
+# Requirements file for Ansible dependencies
+kubernetes>=18.0.0
+pyyaml>=5.4.0
+jinja2>=3.0.0

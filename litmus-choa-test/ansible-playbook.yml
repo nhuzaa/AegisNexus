@@ -1,0 +1,1154 @@
+---
+- name: Setup Complete Chaos Engineering Environment on Azure Ubuntu VM
+  hosts: azure_vm
+  become: yes
+  vars:
+    minikube_version: v1.33.1
+    kubectl_version: v1.30.1
+    helm_version: v3.14.4
+    node_count: 10
+    ubuntu_user: azureuser
+    prometheus_namespace: monitoring
+    litmus_namespace: litmus
+    app_namespace: chaos-apps
+    # Discord webhook URL - update this with your Discord webhook URL
+    discord_webhook_url: https://discord.com/api/webhooks/1378468656245117059/y2NYQi4z6clqKxnk4aywPkmYX8Ot_o_7Do4Hcj1Ye0ZWsQJpMB4HBBhAuUSyzxZv7TRA
+
+  tasks:
+    # System Setup
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Install required system packages
+      apt:
+        name:
+          - curl
+          - wget
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+          - conntrack
+          - socat
+          - ebtables
+          - gnupg
+          - unzip
+          - htop
+          - git
+          - vim
+          - jq
+          - python3-pip
+          - python3-setuptools
+          - python3-dev
+          - python3-kubernetes
+          - python3-yaml
+          - python3-jsonpatch
+        state: present
+
+    # Docker Installation
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: "{{ ubuntu_user }}"
+        groups: docker
+        append: yes
+
+    - name: Ensure user has proper sudo access
+      user:
+        name: "{{ ubuntu_user }}"
+        groups: sudo
+        append: yes
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # Fix docker socket permissions
+    - name: Set proper permissions on docker socket
+      file:
+        path: /var/run/docker.sock
+        mode: '0666'
+        owner: root
+        group: docker
+
+    # Ensure docker group permissions are applied
+    - name: Reset ssh connection to apply group changes
+      meta: reset_connection
+
+    - name: Verify docker group membership
+      become_user: "{{ ubuntu_user }}"
+      shell: groups
+      register: user_groups
+
+    - name: Test docker access
+      become_user: "{{ ubuntu_user }}"
+      shell: docker version
+      register: docker_test
+      failed_when: false
+
+    - name: Force docker group membership if needed
+      shell: |
+        newgrp docker
+        su - {{ ubuntu_user }} -c "docker version"
+      when: docker_test.rc != 0
+
+    # kubectl Installation
+    - name: Download kubectl
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+        dest: /tmp/kubectl
+        mode: '0755'
+
+    - name: Install kubectl
+      copy:
+        src: /tmp/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        remote_src: yes
+
+    # Helm Installation
+    - name: Download Helm
+      get_url:
+        url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
+        dest: /tmp/helm.tar.gz
+
+    - name: Extract Helm
+      unarchive:
+        src: /tmp/helm.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Install Helm
+      copy:
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        mode: '0755'
+        remote_src: yes
+
+    # Minikube Installation
+    - name: Download Minikube
+      get_url:
+        url: "https://storage.googleapis.com/minikube/releases/{{ minikube_version }}/minikube-linux-amd64"
+        dest: /tmp/minikube
+        mode: '0755'
+
+    - name: Install Minikube
+      copy:
+        src: /tmp/minikube
+        dest: /usr/local/bin/minikube
+        mode: '0755'
+        remote_src: yes
+
+    # Clean up any existing Minikube cluster first
+    - name: Clean up any existing Minikube cluster
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "Cleaning up any existing Minikube cluster..."
+        minikube delete --all --purge || true
+        docker system prune -f || true
+        echo "Cleanup completed"
+      ignore_errors: yes
+
+    # Start Minikube (as ubuntu user) - Expose to host with retry logic
+    - name: Start Minikube with proper configuration and host exposure
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "Starting Minikube with fresh configuration..."
+        
+        # Retry logic for Minikube start
+        max_retries=3
+        retry_count=0
+        
+        while [ $retry_count -lt $max_retries ]; do
+          echo "Attempt $((retry_count + 1)) of $max_retries to start Minikube..."
+          
+          if minikube start --driver=docker --cpus=2 --memory=4096 --disk-size=30g --listen-address=0.0.0.0 --insecure-registry="0.0.0.0/0" --delete-on-failure; then
+            echo "✅ Minikube started successfully!"
+            break
+          else
+            echo "❌ Minikube start failed on attempt $((retry_count + 1))"
+            retry_count=$((retry_count + 1))
+            
+            if [ $retry_count -lt $max_retries ]; then
+              echo "Cleaning up before retry..."
+              minikube delete --all --purge || true
+              docker system prune -f || true
+              sleep 30
+            else
+              echo "❌ Failed to start Minikube after $max_retries attempts"
+              exit 1
+            fi
+          fi
+        done
+      environment:
+        CHANGE_MINIKUBE_NONE_USER: "true"
+        MINIKUBE_IN_STYLE: "true"
+      register: minikube_start_result
+
+    - name: Wait for Minikube to be ready and verify kubectl connectivity
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "Waiting for Minikube to be fully ready..."
+        timeout=300
+        elapsed=0
+        
+        while [ $elapsed -lt $timeout ]; do
+          echo "Checking Minikube status... ($elapsed/$timeout seconds)"
+          
+          # Check if Minikube is running
+          if minikube status | grep -q "Running"; then
+            echo "Minikube is running, testing kubectl connectivity..."
+            
+            # Test kubectl connectivity
+            if kubectl cluster-info >/dev/null 2>&1; then
+              echo "✅ Minikube is ready and kubectl is connected!"
+              exit 0
+            else
+              echo "Minikube running but kubectl not connected yet..."
+            fi
+          else
+            echo "Minikube not yet running..."
+          fi
+          
+          sleep 10
+          elapsed=$((elapsed + 10))
+        done
+        
+        echo "❌ Timeout waiting for Minikube to be ready"
+        echo "Minikube status:"
+        minikube status || true
+        echo "kubectl cluster-info:"
+        kubectl cluster-info || true
+        exit 1
+
+    - name: Enable Minikube addons
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "Enabling Minikube addons..."
+        minikube addons enable metrics-server
+        minikube addons enable ingress
+        echo "Addons enabled successfully"
+
+    - name: Final verification of kubectl connectivity
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "Final kubectl connectivity verification:"
+        kubectl cluster-info
+        kubectl get nodes
+        echo "✅ Kubernetes cluster is ready!"
+      register: kubectl_final_test
+
+    # Create namespaces
+    - name: Create Kubernetes namespaces
+      become_user: "{{ ubuntu_user }}"
+      k8s:
+        name: "{{ item }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+      loop:
+        - "{{ prometheus_namespace }}"
+        - "{{ litmus_namespace }}"
+        - "{{ app_namespace }}"
+
+    # Install Prometheus Stack using Helm
+    - name: Add Prometheus Helm repository
+      become_user: "{{ ubuntu_user }}"
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: https://prometheus-community.github.io/helm-charts
+
+    # Create AlertManager configuration with Discord integration
+    - name: Create AlertManager configuration with Discord integration
+      copy:
+        dest: /home/{{ ubuntu_user }}/alertmanager-config.yaml
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          global:
+            smtp_smarthost: 'localhost:587'
+            smtp_from: 'alerts@chaos-engineering.local'
+          
+          route:
+            group_by: ['alertname']
+            group_wait: 10s
+            group_interval: 10s
+            repeat_interval: 1h
+            receiver: 'discord-webhook'
+          
+          receivers:
+          - name: 'discord-webhook'
+            webhook_configs:
+            - url: '{{ discord_webhook_url }}'
+              send_resolved: true
+              title: '🚨 Chaos Engineering Alert 🚨'
+              text: |
+                {{ range .Alerts }}
+                **🔥 Alert:** {{ .Annotations.summary }}
+                **📝 Description:** {{ .Annotations.description }}
+                **⚡ Severity:** {{ .Labels.severity }}
+                **🖥️ Instance:** {{ .Labels.instance }}
+                **📊 Status:** {{ .Status }}
+                **⏰ Started:** {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+                {{ if .EndsAt }}**✅ Ended:** {{ .EndsAt.Format "2006-01-02 15:04:05" }}{{ end }}
+                {{ if .Labels.chaos_type }}**🎯 Chaos Type:** {{ .Labels.chaos_type }}{{ end }}
+                ---
+                {{ end }}
+
+    - name: Create Prometheus rules for chaos engineering
+      copy:
+        dest: /home/{{ ubuntu_user }}/prometheus-rules.yaml
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          groups:
+          - name: chaos-engineering.rules
+            rules:
+            - alert: PodCrashLooping
+              expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+              for: 5m
+              labels:
+                severity: warning
+                chaos_type: pod_failure
+              annotations:
+                summary: "Pod {{ $labels.pod }} is crash looping"
+                description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently"
+            
+            - alert: HighCPUUsage
+              expr: (sum by (instance) (rate(container_cpu_usage_seconds_total[5m])) * 100) > 80
+              for: 2m
+              labels:
+                severity: warning
+                chaos_type: resource_stress
+              annotations:
+                summary: "High CPU usage detected"
+                description: "CPU usage is above 80% on {{ $labels.instance }}"
+            
+            - alert: HighMemoryUsage
+              expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+              for: 2m
+              labels:
+                severity: warning
+                chaos_type: resource_stress
+              annotations:
+                summary: "High memory usage detected"
+                description: "Memory usage is above 80% on {{ $labels.instance }}"
+            
+            - alert: PodNotReady
+              expr: kube_pod_status_ready{condition="false"} == 1
+              for: 5m
+              labels:
+                severity: critical
+                chaos_type: pod_failure
+              annotations:
+                summary: "Pod not ready"
+                description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 5 minutes"
+            
+            - alert: DeploymentReplicasMismatch
+              expr: kube_deployment_spec_replicas != kube_deployment_status_available_replicas
+              for: 5m
+              labels:
+                severity: warning
+                chaos_type: deployment_issue
+              annotations:
+                summary: "Deployment replicas mismatch"
+                description: "Deployment {{ $labels.deployment }} in namespace {{ $labels.namespace }} has {{ $labels.spec_replicas }} desired but only {{ $labels.available_replicas }} available"
+            
+            - alert: ChaosExperimentRunning
+              expr: increase(litmus_experiment_total[5m]) > 0
+              for: 1m
+              labels:
+                severity: info
+                chaos_type: experiment_status
+              annotations:
+                summary: "Chaos experiment started"
+                description: "A new chaos experiment has been initiated"
+
+    - name: Install Prometheus Stack with custom AlertManager config and host exposure
+      become_user: "{{ ubuntu_user }}"
+      kubernetes.core.helm:
+        name: prometheus-stack
+        chart_ref: prometheus-community/kube-prometheus-stack
+        release_namespace: "{{ prometheus_namespace }}"
+        create_namespace: true
+        values:
+          grafana:
+            service:
+              type: LoadBalancer
+              loadBalancerIP: "{{ ansible_default_ipv4.address }}"
+              ports:
+                - port: 3000
+                  targetPort: 3000
+                  nodePort: 30080
+            adminPassword: admin123
+            dashboardProviders:
+              dashboardproviders.yaml:
+                apiVersion: 1
+                providers:
+                - name: 'chaos-engineering'
+                  orgId: 1
+                  folder: 'Chaos Engineering'
+                  type: file
+                  disableDeletion: false
+                  editable: true
+                  options:
+                    path: /var/lib/grafana/dashboards/chaos-engineering
+            grafana.ini:
+              server:
+                domain: "{{ ansible_default_ipv4.address }}"
+                root_url: "http://{{ ansible_default_ipv4.address }}:3000"
+          prometheus:
+            service:
+              type: LoadBalancer
+              loadBalancerIP: "{{ ansible_default_ipv4.address }}"
+              ports:
+                - port: 9090
+                  targetPort: 9090
+                  nodePort: 30090
+            prometheusSpec:
+              externalUrl: "http://{{ ansible_default_ipv4.address }}:9090"
+              additionalScrapeConfigs:
+                - job_name: 'litmus-metrics'
+                  static_configs:
+                    - targets: ['litmus-server-service.litmus.svc.cluster.local:8080']
+          alertmanager:
+            service:
+              type: LoadBalancer
+              loadBalancerIP: "{{ ansible_default_ipv4.address }}"
+              ports:
+                - port: 9093
+                  targetPort: 9093
+                  nodePort: 30093
+            alertmanagerSpec:
+              externalUrl: "http://{{ ansible_default_ipv4.address }}:9093"
+            config:
+              global:
+                smtp_smarthost: 'localhost:587'
+                smtp_from: 'alerts@chaos-engineering.local'
+              route:
+                group_by: ['alertname']
+                group_wait: 10s
+                group_interval: 10s
+                repeat_interval: 1h
+                receiver: 'discord-webhook'
+              receivers:
+              - name: 'discord-webhook'
+                webhook_configs:
+                - url: '{{ discord_webhook_url }}'
+                  send_resolved: true
+                  http_config:
+                    headers:
+                      Content-Type: application/json
+                  title: '🚨 Chaos Engineering Alert'
+
+    # Install Loki
+    - name: Add Grafana Helm repository
+      become_user: "{{ ubuntu_user }}"
+      kubernetes.core.helm_repository:
+        name: grafana
+        repo_url: https://grafana.github.io/helm-charts
+
+    - name: Install Loki with host exposure
+      become_user: "{{ ubuntu_user }}"
+      kubernetes.core.helm:
+        name: loki
+        chart_ref: grafana/loki-stack
+        release_namespace: "{{ prometheus_namespace }}"
+        values:
+          loki:
+            service:
+              type: LoadBalancer
+              loadBalancerIP: "{{ ansible_default_ipv4.address }}"
+              ports:
+                - port: 3100
+                  targetPort: 3100
+                  nodePort: 30031
+          promtail:
+            enabled: true
+
+    # Deploy sample applications
+    - name: Deploy sample applications for chaos testing
+      become_user: "{{ ubuntu_user }}"
+      k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: nginx-deployment
+            namespace: "{{ app_namespace }}"
+            labels:
+              app: nginx
+          spec:
+            replicas: "{{ node_count }}"
+            selector:
+              matchLabels:
+                app: nginx
+            template:
+              metadata:
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:1.21
+                  ports:
+                  - containerPort: 80
+
+    - name: Create nginx service with LoadBalancer for host exposure
+      become_user: "{{ ubuntu_user }}"
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: nginx-service
+            namespace: "{{ app_namespace }}"
+          spec:
+            type: LoadBalancer
+            loadBalancerIP: "{{ ansible_default_ipv4.address }}"
+            ports:
+            - port: 80
+              targetPort: 80
+              nodePort: 30082
+            selector:
+              app: nginx
+
+    # Install LitmusChaos
+    - name: Install LitmusChaos CRDs and Operator
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        kubectl apply -f https://litmuschaos.github.io/litmus/3.0.0/litmus-3.0.0.yaml
+
+    - name: Wait for Litmus pods to be ready
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        kubectl wait --for=condition=Ready pods --all -n litmus --timeout=300s
+
+    # Create Litmus Admin Service Account
+    - name: Create Litmus admin service account
+      become_user: "{{ ubuntu_user }}"
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: litmus-admin
+            namespace: "{{ litmus_namespace }}"
+
+    - name: Create Litmus admin cluster role binding
+      become_user: "{{ ubuntu_user }}"
+      k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: litmus-admin
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+          - kind: ServiceAccount
+            name: litmus-admin
+            namespace: "{{ litmus_namespace }}"
+
+    # Expose Litmus Frontend with LoadBalancer for host access
+    - name: Expose Litmus Frontend service with LoadBalancer
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        kubectl patch service litmusportal-frontend-service -n litmus -p '{"spec":{"type":"LoadBalancer","loadBalancerIP":"{{ ansible_default_ipv4.address }}","ports":[{"port":9091,"targetPort":8185,"nodePort":30091}]}}'
+
+    # Configure firewall for external access
+    - name: Configure UFW firewall for service access
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+        comment: "Chaos Engineering Services"
+      loop:
+        - "22"      # SSH
+        - "80"      # Nginx
+        - "3000"    # Grafana
+        - "3100"    # Loki
+        - "8443"    # Kubernetes API
+        - "9090"    # Prometheus
+        - "9091"    # Litmus Frontend
+        - "9093"    # AlertManager
+
+    - name: Enable UFW firewall
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    # Setup enhanced port forwarding script with Discord integration info
+    - name: Create enhanced port forwarding script
+      copy:
+        dest: /home/{{ ubuntu_user }}/start-portforward.sh
+        mode: '0755'
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          #!/bin/bash
+          echo "🚀 Starting chaos engineering environment..."
+          
+          # Get host IP address for external access
+          HOST_IP="{{ ansible_default_ipv4.address }}"
+          echo "📍 Host IP for external access: $HOST_IP"
+          
+          # Get Minikube IP for internal reference
+          MINIKUBE_IP=$(minikube ip)
+          echo "📍 Minikube IP (internal): $MINIKUBE_IP"
+          
+          echo ""
+          echo "🌐 Services available externally at:"
+          echo "📊 Grafana:        http://$HOST_IP:3000 (admin/admin123)"
+          echo "📈 Prometheus:     http://$HOST_IP:9090"
+          echo "🚨 AlertManager:   http://$HOST_IP:9093"
+          echo "📋 Loki:           http://$HOST_IP:3100"
+          echo "🌐 Nginx App:      http://$HOST_IP:80"
+          echo "⚡ Litmus Frontend: http://$HOST_IP:9091"
+          
+          echo ""
+          echo "🧪 Available chaos experiments:"
+          ls -la /home/{{ ubuntu_user }}/chaos-experiments/ 2>/dev/null || echo "No experiments found"
+          
+          echo ""
+          echo "🔔 Discord Integration:"
+          echo "   Test webhook: ./test-discord-alert.sh"
+          echo "   Run with Discord: ./chaos-runner-discord.sh"
+          
+          echo ""
+          echo "🚀 Quick start commands:"
+          echo "   kubectl apply -f chaos-experiments/pod-delete-experiment.yaml"
+          echo "   ./chaos-runner-discord.sh run pod-delete-experiment"
+          echo "   ./chaos-runner-discord.sh status"
+
+    # Create chaos experiment examples
+    - name: Create chaos experiment directory
+      file:
+        path: /home/{{ ubuntu_user }}/chaos-experiments
+        state: directory
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+
+    - name: Create pod delete chaos experiment
+      copy:
+        dest: /home/{{ ubuntu_user }}/chaos-experiments/pod-delete-experiment.yaml
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          apiVersion: litmuschaos.io/v1alpha1
+          kind: ChaosEngine
+          metadata:
+            name: nginx-pod-delete
+            namespace: {{ app_namespace }}
+          spec:
+            appinfo:
+              appns: {{ app_namespace }}
+              applabel: "app=nginx"
+              appkind: deployment
+            chaosServiceAccount: litmus-admin
+            experiments:
+            - name: pod-delete
+              spec:
+                components:
+                  env:
+                  - name: TOTAL_CHAOS_DURATION
+                    value: '30'
+                  - name: CHAOS_INTERVAL
+                    value: '10'
+                  - name: FORCE
+                    value: 'false'
+
+    - name: Create network chaos experiment
+      copy:
+        dest: /home/{{ ubuntu_user }}/chaos-experiments/network-chaos-experiment.yaml
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          apiVersion: litmuschaos.io/v1alpha1
+          kind: ChaosEngine
+          metadata:
+            name: nginx-network-loss
+            namespace: {{ app_namespace }}
+          spec:
+            appinfo:
+              appns: {{ app_namespace }}
+              applabel: "app=nginx"
+              appkind: deployment
+            chaosServiceAccount: litmus-admin
+            experiments:
+            - name: pod-network-loss
+              spec:
+                components:
+                  env:
+                  - name: TOTAL_CHAOS_DURATION
+                    value: '60'
+                  - name: NETWORK_PACKET_LOSS_PERCENTAGE
+                    value: '50'
+                  - name: TARGET_CONTAINER
+                    value: 'nginx'
+
+    - name: Create CPU stress chaos experiment
+      copy:
+        dest: /home/{{ ubuntu_user }}/chaos-experiments/cpu-stress-experiment.yaml
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          apiVersion: litmuschaos.io/v1alpha1
+          kind: ChaosEngine
+          metadata:
+            name: nginx-cpu-stress
+            namespace: {{ app_namespace }}
+          spec:
+            appinfo:
+              appns: {{ app_namespace }}
+              applabel: "app=nginx"
+              appkind: deployment
+            chaosServiceAccount: litmus-admin
+            experiments:
+            - name: pod-cpu-hog
+              spec:
+                components:
+                  env:
+                  - name: TOTAL_CHAOS_DURATION
+                    value: '120'
+                  - name: CPU_CORES
+                    value: '1'
+                  - name: CPU_LOAD
+                    value: '100'
+                  - name: TARGET_CONTAINER
+                    value: 'nginx'
+
+    # Create Discord webhook test script
+    - name: Create Discord webhook test script
+      copy:
+        dest: /home/{{ ubuntu_user }}/test-discord-alert.sh
+        mode: '0755'
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          #!/bin/bash
+          
+          echo "🔔 Testing Discord webhook..."
+          
+          # Test Discord webhook
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d '{
+                 "content": "🧪 **Chaos Engineering Alert Test**",
+                 "embeds": [{
+                   "title": "Test Alert from Chaos Engineering Setup",
+                   "description": "This is a test alert from your chaos engineering environment",
+                   "color": 16711680,
+                   "fields": [
+                     {
+                       "name": "Status",
+                       "value": "Testing",
+                       "inline": true
+                     },
+                     {
+                       "name": "Environment", 
+                       "value": "Minikube Cluster",
+                       "inline": true
+                     },
+                     {
+                       "name": "Timestamp",
+                       "value": "'$(date)'",
+                       "inline": false
+                     }
+                   ]
+                 }]
+               }' \
+               "{{ discord_webhook_url }}"
+          
+          if [ $? -eq 0 ]; then
+              echo "✅ Discord webhook test completed successfully!"
+          else
+              echo "❌ Discord webhook test failed. Check your webhook URL."
+          fi
+
+    # Create enhanced chaos runner script with Discord notifications
+    - name: Create chaos runner with Discord notifications
+      copy:
+        dest: /home/{{ ubuntu_user }}/chaos-runner-discord.sh
+        mode: '0755'
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          #!/bin/bash
+          
+          # Chaos Engineering Runner with Discord Notifications
+          # Usage: ./chaos-runner-discord.sh [experiment-name] [action]
+          
+          set -e
+          
+          DISCORD_WEBHOOK_URL="{{ discord_webhook_url }}"
+          EXPERIMENTS_DIR="/home/{{ ubuntu_user }}/chaos-experiments"
+          NAMESPACE="{{ app_namespace }}"
+          
+          # Colors for output
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+          YELLOW='\033[1;33m'
+          BLUE='\033[0;34m'
+          NC='\033[0m' # No Color
+          
+          send_discord_notification() {
+              local title="$1"
+              local description="$2"
+              local color="$3"
+              local status="$4"
+              
+              curl -H "Content-Type: application/json" \
+                   -X POST \
+                   -d "{
+                     \"embeds\": [{
+                       \"title\": \"🧪 $title\",
+                       \"description\": \"$description\",
+                       \"color\": $color,
+                       \"fields\": [
+                         {
+                           \"name\": \"Status\",
+                           \"value\": \"$status\",
+                           \"inline\": true
+                         },
+                         {
+                           \"name\": \"Environment\",
+                           \"value\": \"Minikube Chaos Lab\",
+                           \"inline\": true
+                         },
+                         {
+                           \"name\": \"Timestamp\",
+                           \"value\": \"$(date)\",
+                           \"inline\": false
+                         }
+                       ]
+                     }]
+                   }" \
+                   "$DISCORD_WEBHOOK_URL" > /dev/null 2>&1
+          }
+          
+          list_experiments() {
+              echo -e "${BLUE}📋 Available Chaos Experiments:${NC}"
+              echo "=================================="
+              for file in "$EXPERIMENTS_DIR"/*.yaml; do
+                  if [ -f "$file" ]; then
+                      basename "$file" .yaml
+                  fi
+              done
+              echo ""
+          }
+          
+          run_experiment() {
+              local experiment="$1"
+              local experiment_file="$EXPERIMENTS_DIR/${experiment}.yaml"
+              
+              if [ ! -f "$experiment_file" ]; then
+                  echo -e "${RED}❌ Experiment file not found: $experiment_file${NC}"
+                  return 1
+              fi
+              
+              echo -e "${YELLOW}🚀 Starting chaos experiment: $experiment${NC}"
+              send_discord_notification "Chaos Experiment Started" "Starting experiment: **$experiment**" 16776960 "🚀 STARTING"
+              
+              kubectl apply -f "$experiment_file"
+              
+              if [ $? -eq 0 ]; then
+                  echo -e "${GREEN}✅ Chaos experiment deployed successfully${NC}"
+                  send_discord_notification "Experiment Deployed" "Successfully deployed experiment: **$experiment**" 65280 "✅ DEPLOYED"
+                  
+                  echo -e "${BLUE}📊 Monitoring experiment progress...${NC}"
+                  echo "Check status with: kubectl get chaosengines -n $NAMESPACE"
+              else
+                  echo -e "${RED}❌ Failed to deploy chaos experiment${NC}"
+                  send_discord_notification "Experiment Failed" "Failed to deploy experiment: **$experiment**" 16711680 "❌ FAILED"
+                  return 1
+              fi
+          }
+          
+          stop_experiment() {
+              local experiment="$1"
+              local experiment_file="$EXPERIMENTS_DIR/${experiment}.yaml"
+              
+              if [ ! -f "$experiment_file" ]; then
+                  echo -e "${RED}❌ Experiment file not found: $experiment_file${NC}"
+                  return 1
+              fi
+              
+              echo -e "${YELLOW}🛑 Stopping chaos experiment: $experiment${NC}"
+              send_discord_notification "Stopping Experiment" "Stopping experiment: **$experiment**" 16753920 "🛑 STOPPING"
+              
+              kubectl delete -f "$experiment_file" 2>/dev/null || true
+              
+              echo -e "${GREEN}✅ Chaos experiment stopped${NC}"
+              send_discord_notification "Experiment Stopped" "Successfully stopped experiment: **$experiment**" 65280 "✅ STOPPED"
+          }
+          
+          show_status() {
+              echo -e "${BLUE}📊 Chaos Experiment Status:${NC}"
+              echo "=========================="
+              
+              echo -e "${YELLOW}ChaosEngines:${NC}"
+              kubectl get chaosengines -n "$NAMESPACE" 2>/dev/null || echo "No chaos engines found"
+              
+              echo ""
+              echo -e "${YELLOW}Recent Chaos Pods:${NC}"
+              kubectl get pods -n "$NAMESPACE" -l chaosUID 2>/dev/null || echo "No chaos pods found"
+              
+              echo ""
+              echo -e "${YELLOW}AlertManager Alerts:${NC}"
+              HOST_IP="{{ ansible_default_ipv4.address }}"
+              curl -s "http://$HOST_IP:9093/api/v1/alerts" | jq -r '.data[] | select(.status.state=="active") | "\(.labels.alertname): \(.annotations.summary)"' 2>/dev/null || echo "No active alerts"
+          }
+          
+          show_help() {
+              echo -e "${BLUE}🧪 Chaos Engineering Runner with Discord Alerts${NC}"
+              echo "================================================"
+              echo ""
+              echo "Usage: $0 [experiment-name] [action]"
+              echo ""
+              echo "Actions:"
+              echo "  list                    - List available experiments"
+              echo "  run [experiment-name]   - Run a chaos experiment"
+              echo "  stop [experiment-name]  - Stop a chaos experiment"
+              echo "  status                  - Show experiment status"
+              echo "  test-discord           - Test Discord webhook"
+              echo ""
+              echo "Examples:"
+              echo "  $0 list"
+              echo "  $0 run pod-delete-experiment"
+              echo "  $0 stop pod-delete-experiment"
+              echo "  $0 status"
+              echo "  $0 test-discord"
+              echo ""
+              list_experiments
+          }
+          
+          test_discord() {
+              echo -e "${BLUE}🔔 Testing Discord webhook...${NC}"
+              send_discord_notification "Webhook Test" "Discord integration is working correctly! 🎉" 65280 "✅ SUCCESS"
+              echo -e "${GREEN}✅ Discord notification sent${NC}"
+          }
+          
+          # Main script logic
+          case "${1:-help}" in
+              "list")
+                  list_experiments
+                  ;;
+              "run")
+                  if [ -z "$2" ]; then
+                      echo -e "${RED}❌ Please specify experiment name${NC}"
+                      show_help
+                      exit 1
+                  fi
+                  run_experiment "$2"
+                  ;;
+              "stop")
+                  if [ -z "$2" ]; then
+                      echo -e "${RED}❌ Please specify experiment name${NC}"
+                      show_help
+                      exit 1
+                  fi
+                  stop_experiment "$2"
+                  ;;
+              "status")
+                  show_status
+                  ;;
+              "test-discord")
+                  test_discord
+                  ;;
+              "help"|*)
+                  show_help
+                  ;;
+          esac
+
+    # Create comprehensive status verification script
+    - name: Create comprehensive status verification script
+      copy:
+        dest: /home/{{ ubuntu_user }}/verify-external-access.sh
+        mode: '0755'
+        owner: "{{ ubuntu_user }}"
+        group: "{{ ubuntu_user }}"
+        content: |
+          #!/bin/bash
+          
+          # Colors for output
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+          YELLOW='\033[1;33m'
+          BLUE='\033[0;34m'
+          NC='\033[0m' # No Color
+          
+          HOST_IP="{{ ansible_default_ipv4.address }}"
+          
+          echo -e "${BLUE}🌐 Verifying External Access to Chaos Engineering Services${NC}"
+          echo "=========================================================="
+          echo -e "${YELLOW}Host IP: $HOST_IP${NC}"
+          echo ""
+          
+          # Function to check service availability
+          check_service() {
+              local service_name="$1"
+              local url="$2"
+              local expected_code="${3:-200}"
+              
+              echo -n "Checking $service_name... "
+              
+              if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$url" | grep -q "$expected_code"; then
+                  echo -e "${GREEN}✅ Available${NC}"
+                  return 0
+              else
+                  echo -e "${RED}❌ Not Available${NC}"
+                  return 1
+              fi
+          }
+          
+          # Check all services
+          echo -e "${YELLOW}Service Availability Check:${NC}"
+          check_service "Grafana" "http://$HOST_IP:3000/login"
+          check_service "Prometheus" "http://$HOST_IP:9090/-/healthy"
+          check_service "AlertManager" "http://$HOST_IP:9093/-/healthy"  
+          check_service "Loki" "http://$HOST_IP:3100/ready"
+          check_service "Nginx App" "http://$HOST_IP:80"
+          check_service "Litmus Frontend" "http://$HOST_IP:9091"
+          
+          echo ""
+          echo -e "${YELLOW}Kubernetes Services Status:${NC}"
+          kubectl get services --all-namespaces -o wide | grep -E "(LoadBalancer|EXTERNAL-IP)"
+          
+          echo ""
+          echo -e "${YELLOW}Network Connectivity Test:${NC}"
+          echo "Testing if services are bound to external interface..."
+          netstat -tlnp | grep -E "(3000|3100|9090|9091|9093|80)" || echo "Some services may not be properly bound"
+          
+          echo ""
+          echo -e "${BLUE}🔗 Access URLs:${NC}"
+          echo "📊 Grafana Dashboard:    http://$HOST_IP:3000 (admin/admin123)"
+          echo "📈 Prometheus Metrics:   http://$HOST_IP:9090"
+          echo "🚨 AlertManager:         http://$HOST_IP:9093"
+          echo "📋 Loki Logs:            http://$HOST_IP:3100"
+          echo "🌐 Test Application:     http://$HOST_IP:80"
+          echo "⚡ Litmus Chaos Portal:  http://$HOST_IP:9091"
+
+    # Wait for LoadBalancer services to be ready
+    - name: Wait for LoadBalancer services to be ready
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "Waiting for LoadBalancer services to get external IPs..."
+        
+        # Wait for services to be ready (up to 5 minutes)
+        timeout=300
+        elapsed=0
+        
+        while [ $elapsed -lt $timeout ]; do
+            ready_count=$(kubectl get services --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer") | select(.status.loadBalancer.ingress != null) | .metadata.name' | wc -l)
+            total_count=$(kubectl get services --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer") | .metadata.name' | wc -l)
+            
+            echo "LoadBalancer services ready: $ready_count/$total_count"
+            
+            if [ "$ready_count" -eq "$total_count" ] && [ "$total_count" -gt 0 ]; then
+                echo "All LoadBalancer services are ready!"
+                break
+            fi
+            
+            sleep 10
+            elapsed=$((elapsed + 10))
+        done
+        
+        if [ $elapsed -ge $timeout ]; then
+            echo "Warning: Some LoadBalancer services may not be ready yet"
+        fi
+        
+        # Show final service status
+        kubectl get services --all-namespaces -o wide | grep LoadBalancer
+      register: loadbalancer_status
+
+    - name: Display LoadBalancer status
+      debug:
+        var: loadbalancer_status.stdout_lines
+
+    # Final status check
+    - name: Display cluster information
+      become_user: "{{ ubuntu_user }}"
+      shell: |
+        echo "=== Cluster Status ==="
+        kubectl cluster-info
+        echo ""
+        echo "=== Nodes ==="
+        kubectl get nodes
+        echo ""
+        echo "=== All Pods ==="
+        kubectl get pods --all-namespaces
+        echo ""
+        echo "=== Services ==="
+        kubectl get services --all-namespaces
+      register: cluster_status
+
+    - name: Show cluster status
+      debug:
+        var: cluster_status.stdout_lines
+
+    # Run final verification and provide summary
+    - name: Run external access verification
+      become_user: "{{ ubuntu_user }}"
+      shell: /home/{{ ubuntu_user }}/verify-external-access.sh
+      register: verification_results
+
+    - name: Display verification results
+      debug:
+        var: verification_results.stdout_lines
+
+    - name: Display final setup summary
+      debug:
+        msg:
+          - "🎉 Chaos Engineering Environment Setup Complete!"
+          - "=============================================="
+          - ""
+          - "🌐 External Access URLs (replace with your Azure VM's public IP):"
+          - "📊 Grafana Dashboard:    http://{{ ansible_default_ipv4.address }}:3000 (admin/admin123)"
+          - "📈 Prometheus Metrics:   http://{{ ansible_default_ipv4.address }}:9090"
+          - "🚨 AlertManager:         http://{{ ansible_default_ipv4.address }}:9093"
+          - "📋 Loki Logs:            http://{{ ansible_default_ipv4.address }}:3100"
+          - "🌐 Test Application:     http://{{ ansible_default_ipv4.address }}:80"
+          - "⚡ Litmus Chaos Portal:  http://{{ ansible_default_ipv4.address }}:9091"
+          - ""
+          - "🔥 Next Steps:"
+          - "1. Ensure Azure NSG allows inbound traffic on ports: 80, 3000, 3100, 9090, 9091, 9093"
+          - "2. Replace {{ ansible_default_ipv4.address }} with your VM's public IP in the URLs above"
+          - "3. Run verification: ./verify-external-access.sh"
+          - "4. Start chaos experiments: ./chaos-runner-discord.sh list"
+          - "5. Test Discord integration: ./chaos-runner-discord.sh test-discord"
+          - ""
+          - "🛡️ Important Security Notes:"
+          - "- Change default Grafana password (admin/admin123)"
+          - "- Configure proper authentication for production use"
+          - "- Review firewall rules for your security requirements"
+
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted

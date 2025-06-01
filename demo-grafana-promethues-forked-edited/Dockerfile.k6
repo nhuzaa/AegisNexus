@@ -1,0 +1,19 @@
+FROM bitnami/golang:1.24.3-debian-12-r1 AS builder
+
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /xk6
+
+RUN go install go.k6.io/xk6/cmd/xk6@latest
+
+RUN xk6 build v0.55.0 \
+    --with github.com/grafana/xk6-client-prometheus-remote@v0.3.2 \
+    --with github.com/grafana/xk6-loki@v1.0.0
+
+FROM debian:bookworm-slim
+
+COPY --from=builder /xk6/k6 /usr/local/bin/k6
+
+WORKDIR /scripts
+
+ENTRYPOINT ["k6"] 

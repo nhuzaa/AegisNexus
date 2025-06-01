@@ -1,0 +1,136 @@
+#cloud-config
+# Cloud-init configuration for Kubernetes infrastructure VM
+
+# Update and upgrade system
+package_update: true
+package_upgrade: true
+
+# Install basic packages
+packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - unzip
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - jq
+  - tree
+
+# Configure user
+users:
+  - name: ${admin_username}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys: []
+
+# Set timezone
+timezone: UTC
+
+# Configure SSH
+ssh_pwauth: false
+disable_root: true
+
+# System configuration
+write_files:
+  - content: |
+      # Kubernetes Infrastructure VM
+      # Prepared for Minikube, Docker, and monitoring stack
+      export PATH=$PATH:/usr/local/bin
+      alias k=kubectl
+      alias tf=terraform
+      alias tofu=tofu
+    path: /etc/profile.d/k8s-env.sh
+    permissions: '0644'
+
+  - content: |
+      # Increase file limits for Kubernetes
+      * soft nofile 65536
+      * hard nofile 65536
+      root soft nofile 65536
+      root hard nofile 65536
+    path: /etc/security/limits.d/99-kubernetes.conf
+    permissions: '0644'
+
+  - content: |
+      # Kernel parameters for Kubernetes
+      net.bridge.bridge-nf-call-iptables = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward = 1
+      vm.swappiness = 0
+    path: /etc/sysctl.d/99-kubernetes.conf
+    permissions: '0644'
+
+# Run commands
+runcmd:
+  # Apply sysctl settings
+  - sysctl --system
+  
+  # Disable swap
+  - swapoff -a
+  - sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+  
+  # Enable necessary kernel modules
+  - modprobe br_netfilter
+  - modprobe ip_vs
+  - modprobe ip_vs_rr
+  - modprobe ip_vs_wrr
+  - modprobe ip_vs_sh
+  - modprobe nf_conntrack
+  
+  # Make kernel modules persistent
+  - echo 'br_netfilter' >> /etc/modules-load.d/k8s.conf
+  - echo 'ip_vs' >> /etc/modules-load.d/k8s.conf
+  - echo 'ip_vs_rr' >> /etc/modules-load.d/k8s.conf
+  - echo 'ip_vs_wrr' >> /etc/modules-load.d/k8s.conf
+  - echo 'ip_vs_sh' >> /etc/modules-load.d/k8s.conf
+  - echo 'nf_conntrack' >> /etc/modules-load.d/k8s.conf
+  
+  # Create .ssh directory for user
+  - mkdir -p /home/${admin_username}/.ssh
+  - chown ${admin_username}:${admin_username} /home/${admin_username}/.ssh
+  - chmod 700 /home/${admin_username}/.ssh
+  
+  # Create welcome message
+  - |
+    cat > /etc/motd << 'EOF'
+    ===============================================
+    🚀 Kubernetes Infrastructure VM
+    ===============================================
+    
+    This VM is prepared for:
+    ✓ Docker container runtime
+    ✓ Minikube Kubernetes cluster  
+    ✓ kubectl CLI tool
+    ✓ Helm package manager
+    ✓ Prometheus monitoring
+    ✓ Grafana dashboards
+    ✓ Loki log aggregation
+    ✓ LitmusChaos platform
+    
+    Next Steps:
+    1. Run Ansible playbook to deploy infrastructure
+    2. Access services via web browser
+    
+    Happy clustering! 🎊
+    ===============================================
+    EOF
+
+# Set final message
+final_message: |
+  Cloud-init finished!
+  VM is ready for Kubernetes infrastructure deployment.
+  
+  System Information:
+  - OS: Ubuntu 20.04 LTS
+  - User: ${admin_username} (sudo enabled)
+  - SSH: Key-based authentication only
+  - Swap: Disabled for Kubernetes
+  - Kernel modules: Loaded for container networking
+  
+  Ready for Ansible deployment!
