@@ -20,6 +20,7 @@ class SREAgent:
 
             return {
                 "tool_summary": tool_result["tool_summary"],
+                "natural_summary": tool_result["natural_summary"],
                 "tools_used": tool_result["tools_used"],
                 "llm_thought": llm_thought,
                 "langgraph": langgraph_response,
