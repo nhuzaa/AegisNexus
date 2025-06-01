@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { askAIAssistant } from "@/lib/api"
+import { VoiceInterface } from "@/components/voice-interface"
 
 interface Message {
   id: string
@@ -79,6 +80,9 @@ export function ChatInterface({ initialMessage }: ChatInterfaceProps) {
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return
 
+    // Hide quick start options after first message
+    setShowQuickStart(false)
+
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
@@ -106,10 +110,15 @@ export function ChatInterface({ initialMessage }: ChatInterfaceProps) {
     try {
       const response = await askAIAssistant(content)
       
+      // Ensure the response content is a string
+      const responseContent = typeof response.response === 'string' 
+        ? response.response 
+        : JSON.stringify(response.response, null, 2)
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "assistant",
-        content: response.response,
+        content: responseContent,
         timestamp: new Date(),
       }
 
@@ -123,6 +132,7 @@ export function ChatInterface({ initialMessage }: ChatInterfaceProps) {
   }
 
   const handleQuickStart = (option: string) => {
+    setShowQuickStart(false) // Hide quick start options when one is selected
     setInput(option)
     handleSendMessage(option)
   }
@@ -301,6 +311,10 @@ export function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                   }
                 }}
               />
+              <VoiceInterface onTranscription={(text) => {
+                setInput(text)
+                handleSendMessage(text)
+              }} />
               <Button
                 variant="outline"
                 size="icon"
