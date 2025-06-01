@@ -1,0 +1,13 @@
+groups:
+  - name: absent
+    interval: 10s
+    rules:
+      - alert: NoMetrics
+        expr: absent_over_time(cpu_usage[10s])
+        for: 0s  # pending period
+        labels:
+          severity: critical
+          service: monitoring
+        annotations:
+          summary: "No metrics from target {{ $labels.instance }}"
+          description: "Target {{ $labels.instance }} has not been reporting metrics for 10 seconds."

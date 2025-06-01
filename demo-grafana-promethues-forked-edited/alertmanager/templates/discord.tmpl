@@ -1,0 +1,98 @@
+{{ define "discord.title" }}
+{{ if eq .Status "firing" }}🚨 ALERT FIRING{{ else }}✅ ALERT RESOLVED{{ end }}
+{{ end }}
+
+{{ define "discord.text" }}
+**Alert Name:** {{ .GroupLabels.alertname }}
+**Status:** {{ .Status | toUpper }}
+**Severity:** {{ range .Alerts }}{{ .Labels.severity | toUpper }}{{ end }}
+**Service:** {{ range .Alerts }}{{ .Labels.service }}{{ end }}
+
+{{ range .Alerts }}
+**Summary:** {{ .Annotations.summary }}
+**Description:** {{ .Annotations.description }}
+**Started:** {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+{{ if .EndsAt }}**Ended:** {{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}{{ end }}
+{{ end }}
+
+{{ if eq .Status "firing" }}
+⚠️ **Action Required:** Please investigate immediately!
+{{ else }}
+✅ **Resolution:** The alert has been resolved.
+{{ end }}
+{{ end }}
+
+{{ define "discord.critical" }}
+🔥 **CRITICAL SYSTEM ALERT** 🔥
+
+**Alert:** {{ .GroupLabels.alertname }}
+**Status:** {{ .Status | toUpper }}
+
+{{ range .Alerts }}
+🚨 **{{ .Annotations.summary }}**
+📊 **Details:** {{ .Annotations.description }}
+⏰ **Time:** {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+🏷️ **Service:** {{ .Labels.service }}
+{{ if .Labels.severity }}⚡ **Severity:** {{ .Labels.severity | toUpper }}{{ end }}
+{{ end }}
+
+💥 **IMMEDIATE ACTION REQUIRED!**
+{{ end }}
+
+{{ define "discord.warning" }}
+⚠️ **WARNING ALERT** ⚠️
+
+{{ range .Alerts }}
+**Alert:** {{ .Labels.alertname }}
+**Summary:** {{ .Annotations.summary }}
+**Description:** {{ .Annotations.description }}
+**Service:** {{ .Labels.service }}
+**Started:** {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+{{ if eq $.Status "resolved" }}**Resolved:** {{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}{{ end }}
+{{ end }}
+
+{{ if eq .Status "firing" }}
+📋 **Please review and take action if necessary**
+{{ else }}
+✅ **Warning has been resolved**
+{{ end }}
+{{ end }}
+
+{{ define "discord.payment" }}
+💳 **PAYMENT SYSTEM ALERT** 💳
+
+{{ range .Alerts }}
+**Alert:** {{ .Labels.alertname }}
+**Status:** {{ $.Status | toUpper }}
+**Summary:** {{ .Annotations.summary }}
+**Details:** {{ .Annotations.description }}
+**Time:** {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+{{ if .Labels.severity }}**Severity:** {{ .Labels.severity | toUpper }}{{ end }}
+{{ end }}
+
+{{ if eq .Status "firing" }}
+💰 **Payment system requires immediate attention!**
+{{ else }}
+✅ **Payment system alert resolved**
+{{ end }}
+{{ end }}
+
+{{ define "discord.system" }}
+🖥️ **SYSTEM RESOURCE ALERT** 🖥️
+
+{{ range .Alerts }}
+**Alert:** {{ .Labels.alertname }}
+**Status:** {{ $.Status | toUpper }}
+**Summary:** {{ .Annotations.summary }}
+**Description:** {{ .Annotations.description }}
+**Started:** {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+{{ if .Labels.severity }}**Severity:** {{ .Labels.severity | toUpper }}{{ end }}
+{{ if .Labels.instance }}**Instance:** {{ .Labels.instance }}{{ end }}
+{{ end }}
+
+{{ if eq .Status "firing" }}
+⚙️ **System monitoring detected an issue**
+{{ else }}
+✅ **System alert has been resolved**
+{{ end }}
+{{ end }}

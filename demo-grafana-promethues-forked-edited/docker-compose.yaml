@@ -1,0 +1,106 @@
+services:
+  smtp:
+    image: ixdotai/smtp:v0.7.6
+    container_name: smtp
+    ports:
+      - 127.0.0.1:25:25
+    env_file:
+      - ./environments/smtp.env
+    networks:
+      - default
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: my_data_db
+      POSTGRES_USER: my_data_user
+      POSTGRES_PASSWORD: my_data_pwd
+    ports:
+      - "5488:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - default
+  loki:
+    image: grafana/loki:3.4.3
+    container_name: loki
+    command: ["--validation.discover-service-name=[]", "--validation.discover-log-levels=false", "-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./loki:/etc/loki/
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - default
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+    command:
+      - --web.enable-remote-write-receiver
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - default
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager:/etc/alertmanager/
+    ports:
+      - 9093:9093
+    networks:
+      - default
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-11.6.0}
+    container_name: grafana
+    environment:
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp:25
+      - GF_SMTP_SKIP_VERIFY=true
+    volumes:
+      - ./grafana:/etc/grafana/provisioning/
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    ports:
+      - 3000:3000
+    networks:
+      - default
+  k6:
+    build:
+      context: .
+      dockerfile: Dockerfile.k6
+    container_name: k6
+    volumes:
+      - ./testdata:/scripts
+    environment:
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_LOKI_URL=http://loki:3100/loki/api/v1/push
+      - K6_OUT=experimental-prometheus-rw
+    networks:
+      - default
+    depends_on:
+      - prometheus
+      - loki
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app
+    ports:
+      - "3001:3001"
+    networks:
+      - default
+    depends_on:
+      - prometheus
+      - loki
+volumes:
+  postgres:
+    driver: local
+  loki-data:
+    driver: local
+networks:
+  default:
+    name: k6-network

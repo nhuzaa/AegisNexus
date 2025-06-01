@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Observability Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .scenario-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .scenario-title {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-info { background-color: #17a2b8; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        #metrics {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .metric-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            display: block;
+        }
+        .metric-label {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+        .description {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        #status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .status-success { background-color: #d4edda; color: #155724; }
+        .status-error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛒 E-commerce Observability Demo</h1>
+        <p>Generate realistic e-commerce logs and metrics for Prometheus and Loki monitoring</p>
+    </div>
+
+    <div class="scenario-section">
+        <div class="scenario-title">👤 User Management</div>
+        <div class="description">Simulate user registration, login, and authentication scenarios</div>
+        <div class="button-group">
+            <button class="btn-success" onclick="runScenario('user-registration')">Generate User Registrations</button>
+            <button class="btn-primary" onclick="runScenario('user-login')">Generate User Logins</button>
+        </div>
+    </div>
+
+    <div class="scenario-section">
+        <div class="scenario-title">🛍️ Product & Shopping</div>
+        <div class="description">Simulate product browsing, cart actions, and customer behavior</div>
+        <div class="button-group">
+            <button class="btn-info" onclick="runScenario('product-browsing')">Generate Product Views</button>
+            <button class="btn-warning" onclick="runScenario('shopping-cart')">Generate Cart Actions</button>
+        </div>
+    </div>
+
+    <div class="scenario-section">
+        <div class="scenario-title">💳 Checkout & Payment</div>
+        <div class="description">Simulate checkout processes and payment transactions</div>
+        <div class="button-group">
+            <button class="btn-success" onclick="runScenario('checkout-payment')">Generate Checkout Events</button>
+        </div>
+    </div>
+
+    <div class="scenario-section">
+        <div class="scenario-title">📦 Inventory & Fulfillment</div>
+        <div class="description">Simulate inventory management and order fulfillment</div>
+        <div class="button-group">
+            <button class="btn-secondary" onclick="runScenario('inventory-management')">Generate Inventory Events</button>
+            <button class="btn-info" onclick="runScenario('shipping-fulfillment')">Generate Shipping Events</button>
+        </div>
+    </div>
+
+    <div class="scenario-section">
+        <div class="scenario-title">🆘 Support & System</div>
+        <div class="description">Simulate customer support tickets and system errors</div>
+        <div class="button-group">
+            <button class="btn-warning" onclick="runScenario('customer-support')">Generate Support Tickets</button>
+            <button class="btn-danger" onclick="runScenario('system-errors')">Generate System Errors</button>
+        </div>
+    </div>
+
+    <div class="scenario-section">
+        <div class="scenario-title">🚀 Load Testing</div>
+        <div class="description">Simulate high traffic and stress scenarios</div>
+        <div class="button-group">
+            <button class="btn-danger" onclick="runHighTraffic()">Start High Traffic (30s)</button>
+            <button class="btn-primary" onclick="getMetrics()">Refresh Metrics</button>
+        </div>
+    </div>
+
+    <div id="status"></div>
+
+    <div id="metrics">
+        <h2>📊 Current E-commerce Metrics</h2>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-value" id="requestCount">0</span>
+                <span class="metric-label">Total Requests</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="errorCount">0</span>
+                <span class="metric-label">Errors</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="userRegistrations">0</span>
+                <span class="metric-label">User Registrations</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="userLogins">0</span>
+                <span class="metric-label">User Logins</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="productViews">0</span>
+                <span class="metric-label">Product Views</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="cartAdditions">0</span>
+                <span class="metric-label">Cart Additions</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="checkouts">0</span>
+                <span class="metric-label">Checkouts</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="paymentProcessed">0</span>
+                <span class="metric-label">Payments Processed</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="paymentErrors">0</span>
+                <span class="metric-label">Payment Errors</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="inventoryChecks">0</span>
+                <span class="metric-label">Inventory Checks</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="shippingRequests">0</span>
+                <span class="metric-label">Shipping Requests</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value" id="customerSupport">0</span>
+                <span class="metric-label">Support Tickets</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = isError ? 'status-error' : 'status-success';
+            setTimeout(() => {
+                status.textContent = '';
+                status.className = '';
+            }, 3000);
+        }
+
+        async function runScenario(scenario) {
+            try {
+                showStatus(`Running ${scenario} scenario...`);
+                const response = await fetch(`/api/scenarios/${scenario}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ count: getRandomCount(scenario) })
+                });
+                const data = await response.json();
+                showStatus(data.message);
+                updateMetrics(data.metrics);
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error running scenario', true);
+            }
+        }
+
+        async function runHighTraffic() {
+            try {
+                showStatus('Starting high traffic simulation for 30 seconds...');
+                const response = await fetch('/api/scenarios/high-traffic', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ duration: 30 })
+                });
+                const data = await response.json();
+                showStatus(data.message);
+                
+                // Auto-refresh metrics during high traffic
+                const refreshInterval = setInterval(getMetrics, 2000);
+                setTimeout(() => {
+                    clearInterval(refreshInterval);
+                    showStatus('High traffic simulation completed');
+                }, 30000);
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error starting high traffic simulation', true);
+            }
+        }
+
+        async function getMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                updateMetrics(data);
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error fetching metrics', true);
+            }
+        }
+
+        function updateMetrics(metrics) {
+            Object.keys(metrics).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.textContent = metrics[key];
+                }
+            });
+        }
+
+        function getRandomCount(scenario) {
+            const counts = {
+                'user-registration': Math.floor(Math.random() * 15) + 5,
+                'user-login': Math.floor(Math.random() * 20) + 10,
+                'product-browsing': Math.floor(Math.random() * 30) + 15,
+                'shopping-cart': Math.floor(Math.random() * 20) + 10,
+                'checkout-payment': Math.floor(Math.random() * 15) + 5,
+                'inventory-management': Math.floor(Math.random() * 20) + 10,
+                'shipping-fulfillment': Math.floor(Math.random() * 15) + 8,
+                'customer-support': Math.floor(Math.random() * 10) + 3,
+                'system-errors': Math.floor(Math.random() * 8) + 2
+            };
+            return counts[scenario] || 10;
+        }
+
+        // Auto-refresh metrics every 5 seconds
+        setInterval(getMetrics, 5000);
+        
+        // Load initial metrics
+        getMetrics();
+    </script>
+</body>
+</html> 
