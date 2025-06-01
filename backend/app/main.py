@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.sre import router as sre_router
+from app.routes.azure_speech_streaming import (
+    router as azure_speech_streaming_router
+)
 
 app = FastAPI(
-    title="AegisNexus SRE Agent API",
-    description="AI-powered SRE agent with integrated monitoring tools",
+    title="AegisNexus SRE Agent API with Azure Speech Streaming",
+    description="AI-powered SRE agent with monitoring tools and Azure Speech",
     version="1.0.0"
 )
 
@@ -29,13 +32,22 @@ app.add_middleware(
 async def root():
     """Root endpoint for API health check"""
     return {
-        "message": "AegisNexus SRE Agent API is running",
+        "message": (
+            "AegisNexus SRE Agent & Azure Speech Streaming API is running"
+        ),
         "status": "healthy",
         "version": "1.0.0",
-        "documentation": "/docs"
+        "documentation": "/docs",
+        "services": [
+            "SRE Agent",
+            "Azure Speech Service",
+            "WebSocket Audio Streaming"
+        ]
     }
 
 app.include_router(sre_router)
+app.include_router(azure_speech_streaming_router)
+app.include_router(azure_speech_streaming_router)
 
 if __name__ == "__main__":
     import uvicorn

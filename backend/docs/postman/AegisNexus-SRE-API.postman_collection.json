@@ -462,6 +462,274 @@
         }
       ],
       "description": "Demo and testing endpoints for SRE tools"
+    },
+    {
+      "name": "Azure Speech Service",
+      "item": [
+        {
+          "name": "Text to Speech",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hello, this is a test of Azure Speech Service!\",\n  \"voice_name\": \"en-US-AriaNeural\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/speech/text-to-speech",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "text-to-speech"
+              ]
+            },
+            "description": "Convert text to speech using Azure Cognitive Services.\n\nReturns audio data as base64 encoded string.\n\nSupported voices:\n- en-US-AriaNeural\n- en-US-JennyNeural\n- en-US-GuyNeural\n- And many more..."
+          },
+          "response": []
+        },
+        {
+          "name": "Speech to Text",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio_file",
+                  "type": "file",
+                  "src": "/path/to/audio.wav",
+                  "description": "Audio file to convert (WAV format recommended)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/speech/speech-to-text",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "speech-to-text"
+              ]
+            },
+            "description": "Convert speech to text using Azure Cognitive Services.\n\nAccepts audio file upload (WAV format recommended).\n\nReturns transcribed text with confidence score."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Available Voices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/speech/voices?language=en-US",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "voices"
+              ],
+              "query": [
+                {
+                  "key": "language",
+                  "value": "en-US",
+                  "description": "Language filter (optional)"
+                }
+              ]
+            },
+            "description": "Get list of available voices from Azure Speech Service.\n\nOptional language filter:\n- en-US (English US)\n- en-GB (English UK)\n- es-ES (Spanish)\n- fr-FR (French)\n- de-DE (German)\n- And many more..."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Available Voices (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"en-US\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/speech/voices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "voices"
+              ]
+            },
+            "description": "Get list of available voices from Azure Speech Service (POST method).\n\nOptional language filter in request body."
+          },
+          "response": []
+        },
+        {
+          "name": "Speech Service Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/speech/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "health"
+              ]
+            },
+            "description": "Perform health check of the Azure Speech Service.\n\nReturns:\n- Service status (healthy/unhealthy)\n- Region information\n- Endpoint details\n- Test synthesis results"
+          },
+          "response": []
+        },
+        {
+          "name": "Speech Service Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/speech/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                ""
+              ]
+            },
+            "description": "Get information about the Azure Speech Service endpoints.\n\nReturns:\n- Service information\n- Available endpoints\n- API version\n- Service status"
+          },
+          "response": []
+        },
+        {
+          "name": "Synthesize Speech (Alternative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"This is an alternative endpoint for text to speech synthesis.\",\n  \"voice_name\": \"en-US-JennyNeural\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/speech/synthesize",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "synthesize"
+              ]
+            },
+            "description": "Alternative endpoint for text to speech synthesis.\n\nSame functionality as /text-to-speech but with shorter URL."
+          },
+          "response": []
+        },
+        {
+          "name": "Recognize Speech (Alternative)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio_file",
+                  "type": "file",
+                  "src": "/path/to/audio.wav",
+                  "description": "Audio file to convert (WAV format recommended)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/speech/recognize",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "recognize"
+              ]
+            },
+            "description": "Alternative endpoint for speech to text recognition.\n\nSame functionality as /speech-to-text but with shorter URL."
+          },
+          "response": []
+        },
+        {
+          "name": "API Examples",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/speech/example",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "speech",
+                "example"
+              ]
+            },
+            "description": "Get example usage patterns for the Azure Speech Service API.\n\nReturns:\n- Example requests and responses\n- Usage patterns\n- Sample payloads\n- API documentation"
+          },
+          "response": []
+        }
+      ],
+      "description": "Azure Speech Service endpoints for text-to-speech and speech-to-text functionality"
     }
   ],
   "event": [

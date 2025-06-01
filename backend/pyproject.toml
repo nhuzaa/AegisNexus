@@ -11,6 +11,9 @@ dependencies = [
     "llama-api-client",
     "python-dotenv",
     "requests",
+    "azure-cognitiveservices-speech",
+    "python-multipart",
+    "websockets",
 ]
 
 [project.scripts]
