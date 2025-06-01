@@ -7,6 +7,7 @@ import os
 import logging
 import random
 import time
+import requests
 from typing import Dict, List, Any, Optional
 from dotenv import load_dotenv
 
@@ -24,17 +25,20 @@ class PrometheusClient:
         """Initialize Prometheus client"""
         self.prometheus_url = url or os.getenv('PROMETHEUS_URL', 
                                               'http://localhost:9090')
-        self.mock_mode = os.getenv('MOCK_MODE', 'false').lower() == 'true'
+        self.mock_mode = os.getenv('MOCK_MODE', 'false').lower() == 'false'
         
         if not self.mock_mode:
             try:
-                from prometheus_api_client import PrometheusConnect
-                self.prom = PrometheusConnect(url=self.prometheus_url, 
-                                            disable_ssl=True)
-                logger.info(f"📊 Connected to Prometheus at "
-                          f"{self.prometheus_url}")
+                # Test connection to Prometheus
+                response = requests.get(f"{self.prometheus_url}/api/v1/status/config", 
+                                      timeout=5)
+                if response.status_code == 200:
+                    logger.info(f"📊 Connected to Prometheus at {self.prometheus_url}")
+                else:
+                    raise Exception(f"HTTP {response.status_code}")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to connect to Prometheus: {e}")
+                logger.info("🎭 Falling back to mock mode")
                 self.mock_mode = True
         
         if self.mock_mode:
@@ -49,6 +53,74 @@ class PrometheusClient:
         # Generate mock time series data
         for i in range(5):
             timestamp = current_time - (i * 60)  # 1 minute intervals
+            if 'cpu' in metric_name.lower():
+                value = random.uniform(20, 80)
+            elif 'memory' in metric_name.lower():
+                value = random.uniform(40, 90)
+            elif 'disk' in metric_name.lower():
+                value = random.uniform(10, 70)
+            elif 'error' in metric_name.lower():
+                value = random.uniform(0, 5)
+            elif 'request' in metric_name.lower():
+                value = random.uniform(100, 1000)
+            else:
+                value = random.uniform(0, 100)
+                
+            mock_data.append({
+                'metric': {'__name__': metric_name, 'instance': f'localhost:300{i+1}'},
+                'value': [timestamp, str(value)]
+            })
+        
+        return mock_data
+    
+    def query_prometheus(self, query: str) -> Dict[str, Any]:
+        """Execute a PromQL query and return results"""
+        try:
+            if self.mock_mode:
+                mock_data = self._generate_mock_data(query, query)
+                return {
+                    'status': 'success',
+                    'data': {'result': mock_data},
+                    'query': query,
+                    'mock': True
+                }
+            
+            # Real Prometheus query
+            response = requests.get(
+                f"{self.prometheus_url}/api/v1/query",
+                params={'query': query},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data['status'] == 'success':
+                    return {
+                        'status': 'success',
+                        'data': data['data'],
+                        'query': query,
+                        'mock': False
+                    }
+                else:
+                    return {
+                        'status': 'error',
+                        'error': data.get('error', 'Unknown error'),
+                        'query': query
+                    }
+            else:
+                return {
+                    'status': 'error',
+                    'error': f'HTTP {response.status_code}: {response.text}',
+                    'query': query
+                }
+                
+        except Exception as e:
+            logger.error(f"Error querying Prometheus: {e}")
+            return {
+                'status': 'error',
+                'error': str(e),
+                'query': query
+            }
             if 'cpu' in metric_name.lower():
                 value = random.uniform(10, 80)
             elif 'memory' in metric_name.lower():
