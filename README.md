@@ -26,19 +26,22 @@ Watch a quick demonstration of Aegis Nexus in action:
 
 ## Project Structure
 
-Aegis Nexus
-├── backend
-│   Description: FastAPI and LangGraph-based Python project managed with UV. Includes agents, tools, and services for processing user questions
-    and generating actionable SRE insights.
-│
-├── frontend
-│   Description: Next.js-based Vibe-coded interface providing a modern and interactive user experience.
-│
-├── demo-grafana-promethues-forked-edited
-│   Description: Chaos engineering project generating logs using Prometheus, Grafana, Loki, and Litmus. Kubernetes integration is WIP.
-│
-├── litmus-choa-test
-│   Description: Chaos engineering experiments using Litmus for testing system resilience and generating chaos scenarios.
+- **Backend**
+  - FastAPI and LangGraph-based Python project managed with UV.
+  - Includes agents, tools, and services for processing user questions and generating actionable SRE insights.
+
+- **Frontend**
+  - Next.js-based Vibe-coded interface.
+  - Provides a modern and interactive user experience.
+
+- **Demo Grafana Prometheus**
+  - Chaos engineering project.
+  - Generates logs using Prometheus, Grafana, Loki, and Litmus.
+  - Kubernetes integration is a work in progress (WIP).
+
+- **Litmus Chaos Test**
+  - Focuses on chaos engineering experiments using Litmus.
+  - Tests system resilience and generates chaos scenarios.
 
 
 ## Installation
