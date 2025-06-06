@@ -25,10 +25,11 @@ Watch a quick demonstration of Aegis Nexus in action:
 [![Aegis Nexus Demo](https://img.youtube.com/vi/eZ0K88eMKTo/0.jpg)](https://youtu.be/eZ0K88eMKTo?si=8olVAJX34A9v_xa_)
 
 ## Project Structure
-```
+
 Aegis Nexus
 ├── backend
-│   Description: FastAPI and LangGraph-based Python project managed with UV. Includes agents, tools, and services for processing user questions and generating actionable SRE insights.
+│   Description: FastAPI and LangGraph-based Python project managed with UV. Includes agents, tools, and services for processing user questions
+    and generating actionable SRE insights.
 │
 ├── frontend
 │   Description: Next.js-based Vibe-coded interface providing a modern and interactive user experience.
@@ -38,7 +39,7 @@ Aegis Nexus
 │
 ├── litmus-choa-test
 │   Description: Chaos engineering experiments using Litmus for testing system resilience and generating chaos scenarios.
-```
+
 
 ## Installation
 
