@@ -8,7 +8,7 @@ Welcome aboard the **Aegis Nexus Shuttle**, where we boldly go where no infrastr
 
 The backend follows a multi-step pipeline to transform a user question into actionable SRE insights. The high-level flow is:
 
-![Aegis Nexus Processing Flow](docs/image/flow.png)
+![Aegis Nexus Processing Flow](backend/docs/image/flow.png)
 
 1. **Question** – The user submits a question through the API or CLI.
 2. **Determine suitable action** – The SRE agent analyzes the question to figure out what data is needed.
