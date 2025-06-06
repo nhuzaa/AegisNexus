@@ -26,31 +26,18 @@ Watch a quick demonstration of Aegis Nexus in action:
 
 ## Project Structure
 ```
-sre-agent-api
-├── app
-│   ├── __init__.py
-│   ├── main.py
-│   ├── agents
-│   │   ├── __init__.py
-│   │   └── sre_agent.py
-│   ├── services
-│   │   ├── __init__.py
-│   │   └── llm_service.py
-│   ├── models
-│   │   ├── __init__.py
-│   │   └── request_models.py
-│   └── routes
-│       ├── __init__.py
-│       └── sre.py
-├── tests
-│   ├── __init__.py
-│   ├── test_main.py
-│   └── test_sre_agent.py
-├── cli.py
-├── pyproject.toml
-├── .env.example
-├── .gitignore
-└── README.md
+Aegis Nexus
+├── backend
+│   Description: FastAPI and LangGraph-based Python project managed with UV. Includes agents, tools, and services for processing user questions and generating actionable SRE insights.
+│
+├── frontend
+│   Description: Next.js-based Vibe-coded interface providing a modern and interactive user experience.
+│
+├── demo-grafana-promethues-forked-edited
+│   Description: Chaos engineering project generating logs using Prometheus, Grafana, Loki, and Litmus. Kubernetes integration is WIP.
+│
+├── litmus-choa-test
+│   Description: Chaos engineering experiments using Litmus for testing system resilience and generating chaos scenarios.
 ```
 
 ## Installation
