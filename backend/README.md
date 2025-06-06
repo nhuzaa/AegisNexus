@@ -3,6 +3,28 @@
 ## Overview
 The SRE Agent API is a FastAPI application that allows users to ask Site Reliability Engineering (SRE) questions through a dedicated endpoint. It utilizes LangGraph and Llama-API to process and respond to these inquiries.
 
+## Backend Pipeline
+
+The backend follows a multi-step pipeline to transform a user question into actionable SRE insights. The high-level flow is:
+
+```mermaid
+flowchart TD
+    Q[User Question] --> A[Determine suitable action]
+    A --> B[Select tools via LangGraph]
+    B --> C[Generate PromQL queries]
+    C --> D[Run tools]
+    D --> E[Process logs & metrics]
+    E --> F[Summarize in natural language]
+```
+
+1. **Question** – The user submits a question through the API or CLI.
+2. **Determine suitable action** – The SRE agent analyzes the question to figure out what data is needed.
+3. **Select tools (LangGraph)** – Using LangGraph, the agent chooses which monitoring tools or PromQL queries to use.
+4. **Generate PromQL** – The agent formulates specific PromQL queries to retrieve metrics.
+5. **Run tools** – Prometheus and other tools execute the queries and gather logs/metrics.
+6. **Process logs and metrics** – Results are parsed and condensed into a technical summary.
+7. **Summarize** – The LLM service provides a short natural language answer based on the technical findings.
+
 ## Project Structure
 ```
 sre-agent-api
