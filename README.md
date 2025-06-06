@@ -18,6 +18,12 @@ The backend follows a multi-step pipeline to transform a user question into acti
 6. **Process logs and metrics** – Results are parsed and condensed into a technical summary.
 7. **Summarize** – The LLM service provides a short natural language answer based on the technical findings.
 
+## 🎬 Demo Video
+
+Watch a quick demonstration of Aegis Nexus in action:
+
+[![Aegis Nexus Demo](https://img.youtube.com/vi/eZ0K88eMKTo/0.jpg)](https://youtu.be/eZ0K88eMKTo?si=8olVAJX34A9v_xa_)
+
 ## Project Structure
 ```
 sre-agent-api
