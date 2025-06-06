@@ -8,15 +8,7 @@ Welcome aboard the **Aegis Nexus Shuttle**, where we boldly go where no infrastr
 
 The backend follows a multi-step pipeline to transform a user question into actionable SRE insights. The high-level flow is:
 
-```mermaid
-flowchart TD
-    Q[User Question] --> A[Determine suitable action]
-    A --> B[Select tools via LangGraph]
-    B --> C[Generate PromQL queries]
-    C --> D[Run tools]
-    D --> E[Process logs & metrics]
-    E --> F[Summarize in natural language]
-```
+![Aegis Nexus Processing Flow](docs/image/flow.png)
 
 1. **Question** – The user submits a question through the API or CLI.
 2. **Determine suitable action** – The SRE agent analyzes the question to figure out what data is needed.
